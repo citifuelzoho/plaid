@@ -1,0 +1,96 @@
+name: Plaid-Verification
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+concurrency:
+  group: plaid-production-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          ssh-keyscan \
+            -p "${{ secrets.SERVER_PORT }}" \
+            -H "${{ secrets.SERVER_HOST }}" \
+            >> ~/.ssh/known_hosts
+
+      - name: Deploy application
+        run: |
+          ssh \
+            -i ~/.ssh/deploy_key \
+            -p "${{ secrets.SERVER_PORT }}" \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" << 'EOF'
+
+          set -e
+
+          PROJECT_PATH="/var/www/plaid-idv"
+          BRANCH="master"
+          PM2_APP_NAME="plaid-idv"
+
+          echo "Go to project folder"
+          cd "$PROJECT_PATH"
+
+          echo "Check .env file"
+          if [ ! -f ".env" ]; then
+            echo "ERROR: .env file not found in $PROJECT_PATH"
+            exit 1
+          fi
+
+          echo "Fetch latest code"
+          git fetch origin "$BRANCH"
+
+          echo "Reset to latest branch"
+          git reset --hard "origin/$BRANCH"
+
+          echo "Clean untracked files but keep .env"
+          git clean -fd \
+            -e .env \
+            -e .env.production
+
+          echo "Install dependencies"
+          npm ci --omit=dev
+
+          echo "Restart PM2 application"
+          if pm2 describe "$PM2_APP_NAME" > /dev/null 2>&1; then
+            pm2 reload ecosystem.config.js \
+              --only "$PM2_APP_NAME" \
+              --env production \
+              --update-env
+          else
+            pm2 start ecosystem.config.js \
+              --only "$PM2_APP_NAME" \
+              --env production
+          fi
+
+          echo "Save PM2 process list"
+          pm2 save
+
+          echo "Show PM2 status"
+          pm2 status
+
+          echo "Deploy completed successfully"
+          EOF
+
+      - name: Remove SSH key
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key
