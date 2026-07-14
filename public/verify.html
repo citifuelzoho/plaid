@@ -2,11 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <title>United Transports — Verify Identity</title>
-
-  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+  <title>United Transports — Identity Verification</title>
 
   <style>
     * {
@@ -16,25 +14,26 @@
     }
 
     body {
+      min-height: 100vh;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #f0f2f5;
-      min-height: 100vh;
+      color: #111827;
     }
 
     .topnav {
-      background: #fff;
-      border-bottom: 1px solid #e8e8e8;
-      padding: 0 32px;
       height: 60px;
+      padding: 0 32px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      background: #ffffff;
+      border-bottom: 1px solid #e5e7eb;
     }
 
     .logo {
       font-size: 18px;
       font-weight: 700;
-      color: #000;
+      color: #000000;
     }
 
     .logo span {
@@ -52,164 +51,183 @@
       align-items: center;
       gap: 6px;
       font-size: 13px;
-      color: #aaa;
+      color: #9ca3af;
     }
 
     .progress-step.active {
-      color: #000;
-      font-weight: 500;
+      color: #111827;
+      font-weight: 600;
     }
 
     .progress-step.done {
-      color: #16a34a;
+      color: #15803d;
     }
 
     .progress-num {
       width: 24px;
       height: 24px;
       border-radius: 50%;
-      background: #e8e8e8;
       display: flex;
       align-items: center;
       justify-content: center;
+      background: #e5e7eb;
+      color: #6b7280;
       font-size: 12px;
-      font-weight: 600;
-      color: #888;
+      font-weight: 700;
     }
 
     .progress-step.active .progress-num {
-      background: #000;
-      color: #fff;
+      background: #111827;
+      color: #ffffff;
     }
 
     .progress-step.done .progress-num {
       background: #16a34a;
-      color: #fff;
+      color: #ffffff;
     }
 
     .progress-line {
       width: 40px;
       height: 1px;
-      background: #e8e8e8;
-    }
-
-    .progress-line.done {
-      background: #16a34a;
+      background: #d1d5db;
     }
 
     .page {
       min-height: calc(100vh - 60px);
+      padding: 48px 20px;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
-      padding: 32px;
     }
 
     .card {
       width: 100%;
-      max-width: 460px;
-      background: #fff;
+      max-width: 560px;
+      padding: 36px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
       border-radius: 16px;
-      border: 1px solid #e8e8e8;
-      padding: 40px 32px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
       text-align: center;
     }
 
-    .icon {
-      width: 72px;
-      height: 72px;
-      background: #000;
-      color: #fff;
-      border-radius: 16px;
+    .icon-wrap {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 20px;
+      border-radius: 18px;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 24px;
-      font-size: 32px;
+      background: #eff6ff;
+      font-size: 30px;
     }
 
     h1 {
-      font-size: 24px;
-      font-weight: 700;
-      color: #000;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
+      font-size: 26px;
+      line-height: 1.25;
     }
 
-    .subtitle {
+    .description {
+      color: #6b7280;
       font-size: 14px;
-      color: #666;
-      line-height: 1.7;
-      margin-bottom: 28px;
+      line-height: 1.65;
     }
 
-    .features {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-bottom: 28px;
-      text-align: left;
-    }
-
-    .feature {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 14px;
-      color: #333;
-    }
-
-    .feature-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      background: #f0f2f5;
+    .status-box {
+      margin-top: 24px;
+      padding: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 16px;
-      flex-shrink: 0;
-    }
-
-    button {
-      width: 100%;
-      background: #000;
-      color: #fff;
-      border: none;
+      gap: 12px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
       border-radius: 10px;
-      padding: 16px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.2s;
+      color: #475569;
+      font-size: 14px;
     }
 
-    button:hover { opacity: 0.85; }
-    button:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    .plaid-badge {
-      margin-top: 14px;
-      font-size: 12px;
-      color: #aaa;
+    .spinner {
+      width: 20px;
+      height: 20px;
+      flex: 0 0 20px;
+      border: 3px solid #dbeafe;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
     }
 
-    .error {
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .error-box {
       display: none;
-      margin-top: 16px;
-      background: #fef2f2;
+      margin-top: 18px;
+      padding: 14px 16px;
       border: 1px solid #fecaca;
+      border-radius: 10px;
+      background: #fef2f2;
       color: #991b1b;
-      padding: 12px;
-      border-radius: 8px;
       font-size: 13px;
+      line-height: 1.55;
       text-align: left;
-      word-break: break-word;
     }
 
-    @media (max-width: 768px) {
-      .topnav { padding: 0 16px; }
-      .progress-step span { display: none; }
-      .page { padding: 16px; }
-      .card { padding: 32px 24px; }
+    .verify-btn {
+      width: 100%;
+      margin-top: 20px;
+      padding: 14px 18px;
+      border: 0;
+      border-radius: 10px;
+      background: #111827;
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .verify-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    .verify-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+
+    .security-note {
+      margin-top: 18px;
+      color: #6b7280;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 640px) {
+      .topnav {
+        padding: 0 16px;
+      }
+
+      .progress-step span {
+        display: none;
+      }
+
+      .progress-line {
+        width: 22px;
+      }
+
+      .page {
+        padding: 24px 14px;
+      }
+
+      .card {
+        padding: 28px 20px;
+      }
     }
   </style>
 </head>
@@ -223,12 +241,16 @@
         <div class="progress-num">✓</div>
         <span>Application</span>
       </div>
-      <div class="progress-line done"></div>
+
+      <div class="progress-line"></div>
+
       <div class="progress-step active">
         <div class="progress-num">2</div>
         <span>Verify Identity</span>
       </div>
+
       <div class="progress-line"></div>
+
       <div class="progress-step">
         <div class="progress-num">3</div>
         <span>Complete</span>
@@ -237,182 +259,494 @@
   </nav>
 
   <main class="page">
-    <div class="card">
-      <div class="icon">🔒</div>
+    <section class="card">
+      <div class="icon-wrap">🪪</div>
 
-      <h1>Verify Your Identity</h1>
+      <h1>Identity Verification</h1>
 
-      <div class="subtitle">
-        Your application was submitted successfully.<br />
-        One last step — verify your identity to complete the process.
+      <p class="description">
+        Plaid will open automatically. Follow the secure steps to verify your identity.
+      </p>
+
+      <div class="status-box">
+        <div class="spinner" id="status-spinner"></div>
+        <span id="status-text">Preparing secure verification...</span>
       </div>
 
-      <div class="features">
-        <div class="feature">
-          <div class="feature-icon">📄</div>
-          <span>Government-issued ID or Passport</span>
-        </div>
-        <div class="feature">
-          <div class="feature-icon">🤳</div>
-          <span>Quick selfie for face match</span>
-        </div>
-        <div class="feature">
-          <div class="feature-icon">⏱️</div>
-          <span>Takes less than 2 minutes</span>
-        </div>
-      </div>
+      <div class="error-box" id="error-box" role="alert"></div>
 
-      <button id="verify-btn" onclick="startIDV()">
+      <button
+        type="button"
+        class="verify-btn"
+        id="verify-btn"
+        onclick="startIDV()"
+      >
         Start Identity Verification →
       </button>
 
-      <div class="plaid-badge">
-        🔒 Powered by <strong style="color:#000;">Plaid</strong>
-      </div>
-
-      <div class="error" id="error-box"></div>
-    </div>
+      <p class="security-note">
+        Your verification is handled securely by Plaid. Do not close this page until the process is complete.
+      </p>
+    </section>
   </main>
 
+  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+
   <script>
+    const TOKEN_VALIDATE_API = "/api/token/validate";
     const CREATE_LINK_TOKEN_API = "/api/idv/create_link_token";
+    const COMPLETE_IDV_API = "/api/idv/complete";
     const COMPLETE_ROUTE = "/complete";
 
     let isOpening = false;
+    let isCompleting = false;
+    let plaidHandler = null;
+
+    function readTokenFromHash() {
+      const hash = window.location.hash.replace(/^#/, "");
+      const hashParams = new URLSearchParams(hash);
+      return hashParams.get("token");
+    }
 
     function getToken() {
       const params = new URLSearchParams(window.location.search);
-      const tokenFromUrl = params.get("token");
+      const tokenFromUrl = params.get("token") || readTokenFromHash();
 
       if (tokenFromUrl && tokenFromUrl.trim() !== "") {
         const newToken = tokenFromUrl.trim();
         const existingToken = sessionStorage.getItem("plaid_token");
 
-        if (existingToken !== newToken) {
-          sessionStorage.clear();
+        if (existingToken && existingToken !== newToken) {
+          sessionStorage.removeItem("plaid_token");
         }
 
         sessionStorage.setItem("plaid_token", newToken);
+
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete("token");
+        cleanUrl.hash = "";
+
+        window.history.replaceState(
+          {},
+          document.title,
+          cleanUrl.pathname + cleanUrl.search
+        );
+
         return newToken;
       }
 
       return sessionStorage.getItem("plaid_token") || null;
     }
 
+    function normalizeRoute(pathname) {
+      let route = String(pathname || "/");
+
+      if (route === "/index.html") {
+        return "/";
+      }
+
+      if (route === "/verify.html") {
+        return "/verify";
+      }
+
+      if (route === "/complete.html") {
+        return "/complete";
+      }
+
+      if (route.length > 1 && route.endsWith("/")) {
+        route = route.slice(0, -1);
+      }
+
+      return route || "/";
+    }
+
+    function buildRouteUrl(route, token) {
+      if (route === "/complete") {
+        return "/complete";
+      }
+
+      return route + "?token=" + encodeURIComponent(token);
+    }
+
+    function setStatus(message, spinning = true) {
+      const statusText = document.getElementById("status-text");
+      const spinner = document.getElementById("status-spinner");
+
+      if (statusText) {
+        statusText.textContent = message;
+      }
+
+      if (spinner) {
+        spinner.style.display = spinning ? "block" : "none";
+      }
+    }
+
     function showError(message) {
       const errorBox = document.getElementById("error-box");
+
+      if (!errorBox) {
+        return;
+      }
+
       errorBox.textContent = message;
       errorBox.style.display = "block";
     }
 
     function hideError() {
       const errorBox = document.getElementById("error-box");
+
+      if (!errorBox) {
+        return;
+      }
+
       errorBox.textContent = "";
       errorBox.style.display = "none";
     }
 
     function setButtonLoading(isLoading) {
-      const btn = document.getElementById("verify-btn");
-      btn.disabled = isLoading;
-      btn.textContent = isLoading
+      const button = document.getElementById("verify-btn");
+
+      if (!button) {
+        return;
+      }
+
+      button.disabled = isLoading;
+      button.textContent = isLoading
         ? "Opening Plaid..."
         : "Start Identity Verification →";
     }
 
     function extractErrorMessage(data) {
-      if (!data) return "Failed to create Plaid link token";
-      if (data.error && data.error.error_message) return data.error.error_message;
-      if (data.error && data.error.display_message) return data.error.display_message;
-      if (data.error && typeof data.error === "string") return data.error;
-      if (data.message) return data.message;
-      return "Failed to create Plaid link token";
+      if (!data) {
+        return "Request failed";
+      }
+
+      if (data.error && data.error.error_message) {
+        return data.error.error_message;
+      }
+
+      if (data.error && data.error.display_message) {
+        return data.error.display_message;
+      }
+
+      if (data.error && typeof data.error === "string") {
+        return data.error;
+      }
+
+      if (data.message) {
+        return data.message;
+      }
+
+      return "Request failed";
+    }
+
+    async function requestJson(url, options) {
+      const response = await fetch(url, {
+        cache: "no-store",
+        ...options,
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          extractErrorMessage(data) ||
+            `Request failed with status ${response.status}`
+        );
+      }
+
+      return data;
+    }
+
+    function getRouteFromPlaidStage(stage) {
+      const normalizedStage = String(stage || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[_-]+/g, " ")
+        .replace(/\s+/g, " ");
+
+      if (
+        normalizedStage === "zoho form" ||
+        normalizedStage === "application" ||
+        normalizedStage === "application form"
+      ) {
+        return "/";
+      }
+
+      if (
+        normalizedStage === "plaid verification" ||
+        normalizedStage === "plaid verify" ||
+        normalizedStage === "verification"
+      ) {
+        return "/verify";
+      }
+
+      if (
+        normalizedStage === "completed" ||
+        normalizedStage === "complete"
+      ) {
+        return "/complete";
+      }
+
+      return null;
+    }
+
+    async function validateTokenAndRoute(token) {
+      const data = await requestJson(TOKEN_VALIDATE_API, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token }),
+      });
+
+      console.log("Token validation response:", data);
+
+      if (data.valid !== true) {
+        throw new Error(
+          data.message || "This application link is invalid."
+        );
+      }
+
+      const plaidStage =
+        data.stage ||
+        data.Plaid_Stage ||
+        data.plaid_stage ||
+        data.record?.Plaid_Stage ||
+        "";
+
+      /*
+       * Zoho form          -> /
+       * Plaid verification -> /verify
+       * Completed          -> /complete
+       */
+      const targetRoute = getRouteFromPlaidStage(plaidStage);
+
+      if (!targetRoute) {
+        throw new Error(
+          `Unknown Plaid Stage: ${plaidStage || "empty"}`
+        );
+      }
+
+      const currentRoute = normalizeRoute(
+        window.location.pathname
+      );
+
+      if (targetRoute !== currentRoute) {
+        setLoaderMessage(
+          `Continuing from ${plaidStage} stage`
+        );
+
+        window.location.replace(
+          buildRouteUrl(targetRoute, token)
+        );
+
+        return {
+          redirected: true,
+          data,
+        };
+      }
+
+      return {
+        redirected: false,
+        data,
+      };
+    }
+
+    function extractPlaidExitError(error) {
+      if (!error) {
+        return null;
+      }
+
+      return (
+        error.display_message ||
+        error.error_message ||
+        error.error_code ||
+        "Verification was cancelled or failed. Please try again."
+      );
+    }
+
+    function waitForPlaidSDK(timeoutMs = 15000) {
+      return new Promise((resolve, reject) => {
+        if (typeof window.Plaid !== "undefined") {
+          resolve(window.Plaid);
+          return;
+        }
+
+        const startedAt = Date.now();
+
+        const timer = window.setInterval(() => {
+          if (typeof window.Plaid !== "undefined") {
+            window.clearInterval(timer);
+            resolve(window.Plaid);
+            return;
+          }
+
+          if (Date.now() - startedAt >= timeoutMs) {
+            window.clearInterval(timer);
+            reject(
+              new Error(
+                "Plaid SDK failed to load. Please refresh the page or click the button again."
+              )
+            );
+          }
+        }, 100);
+      });
+    }
+
+    async function markCompleted(token, metadata) {
+      console.log("Updating CRM stage to Completed...");
+
+      return requestJson(COMPLETE_IDV_API, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token,
+          link_session_id:
+            metadata && metadata.link_session_id
+              ? metadata.link_session_id
+              : null,
+        }),
+      });
+    }
+
+    function destroyPlaidHandler() {
+      if (
+        plaidHandler &&
+        typeof plaidHandler.destroy === "function"
+      ) {
+        try {
+          plaidHandler.destroy();
+        } catch (error) {
+          console.warn("Could not destroy Plaid handler:", error);
+        }
+      }
+
+      plaidHandler = null;
     }
 
     async function startIDV() {
-      if (isOpening) return;
+      if (isOpening || isCompleting) {
+        return;
+      }
 
       const token = getToken();
 
       console.log("\n=== START IDV ===");
       console.log("Timestamp:", new Date().toISOString());
-      console.log("Token:", token);
+      console.log("Token exists:", Boolean(token));
       console.log("=================\n");
 
       if (!token) {
-        showError("Verification token is missing. Please open the original link from your email.");
-        return;
-      }
-
-      if (typeof Plaid === "undefined") {
-        showError("Plaid SDK failed to load. Please refresh the page.");
+        showError(
+          "Verification token is missing. Please open the original link from your email."
+        );
+        setStatus("Verification token is missing.", false);
+        setButtonLoading(false);
         return;
       }
 
       isOpening = true;
       hideError();
       setButtonLoading(true);
+      setStatus("Loading Plaid securely...");
 
       try {
-        const response = await fetch(CREATE_LINK_TOKEN_API, {
+        await waitForPlaidSDK();
+
+        setStatus("Creating a secure verification session...");
+
+        const data = await requestJson(CREATE_LINK_TOKEN_API, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: token }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ token }),
         });
 
-        let data = null;
-
-        try {
-          data = await response.json();
-        } catch (jsonError) {
-          throw new Error("Server returned invalid response.");
-        }
-
         console.log("\n=== LINK TOKEN RESPONSE ===");
-        console.log("Status:", response.status);
         console.log("Data:", data);
         console.log("===========================\n");
 
-        if (!response.ok) {
-          throw new Error(extractErrorMessage(data));
-        }
-
         if (!data.link_token) {
-          throw new Error("Plaid link_token not found in backend response.");
+          throw new Error("Plaid link_token was not returned");
         }
 
-        const handler = Plaid.create({
+        destroyPlaidHandler();
+
+        plaidHandler = window.Plaid.create({
           token: data.link_token,
 
           onLoad: function () {
             console.log("\n=== PLAID LOADED ===\n");
+            setStatus("Plaid is open. Complete the verification steps.");
           },
 
-          onSuccess: function (public_token, metadata) {
+          onSuccess: async function (publicToken, metadata) {
             console.log("\n=== PLAID ON_SUCCESS ===");
             console.log("Timestamp:", new Date().toISOString());
-            console.log("public_token:", public_token);
             console.log("link_session_id:", metadata?.link_session_id);
             console.log("status:", metadata?.status);
-            console.log("Full metadata:", JSON.stringify(metadata, null, 2));
             console.log("========================\n");
 
-            sessionStorage.clear();
-            window.location.href = COMPLETE_ROUTE;
+            isCompleting = true;
+            isOpening = false;
+            hideError();
+            setButtonLoading(true);
+            setStatus("Saving verification completion...");
+
+            try {
+              await markCompleted(token, metadata);
+
+              sessionStorage.removeItem("plaid_token");
+              destroyPlaidHandler();
+
+              window.location.replace(COMPLETE_ROUTE);
+            } catch (error) {
+              console.error(
+                "Failed to update CRM completion:",
+                error
+              );
+
+              isCompleting = false;
+              showError(
+                error.message ||
+                  "Verification was submitted, but CRM could not be updated."
+              );
+              setStatus("CRM update failed. Please try again.", false);
+              setButtonLoading(false);
+            }
           },
 
-          onExit: function (err, metadata) {
+          onExit: function (error, metadata) {
             console.log("\n=== PLAID ON_EXIT ===");
             console.log("Timestamp:", new Date().toISOString());
-            console.log("Error:", err);
-            console.log("Metadata:", JSON.stringify(metadata, null, 2));
+            console.log("Error:", error);
+            console.log("Metadata:", metadata);
             console.log("=====================\n");
 
-            if (err) {
-              showError("Verification was cancelled or failed. Please try again.");
+            if (isCompleting) {
+              return;
+            }
+
+            const plaidError = extractPlaidExitError(error);
+
+            if (plaidError) {
+              showError(plaidError);
+              setStatus("Plaid closed with an error.", false);
+            } else {
+              hideError();
+              setStatus(
+                "Verification was closed. Click the button to continue.",
+                false
+              );
             }
 
             isOpening = false;
             setButtonLoading(false);
+            destroyPlaidHandler();
           },
 
           onEvent: function (eventName, metadata) {
@@ -421,35 +755,73 @@
             console.log("view_name:", metadata?.view_name);
             console.log("exit_status:", metadata?.exit_status);
             console.log("link_session_id:", metadata?.link_session_id);
-            console.log("Full metadata:", JSON.stringify(metadata, null, 2));
             console.log("===================\n");
           },
         });
 
-        handler.open();
+        setStatus("Opening Plaid...");
+        plaidHandler.open();
       } catch (error) {
         console.error("\n=== START IDV ERROR ===");
         console.error("Error:", error);
         console.error("=======================\n");
-        showError(error.message || "Could not start Plaid. Please try again.");
+
+        showError(
+          error.message ||
+            "Could not start Plaid. Please click the button and try again."
+        );
+
+        setStatus(
+          "Plaid could not open automatically. Click the button to retry.",
+          false
+        );
+
         isOpening = false;
         setButtonLoading(false);
+        destroyPlaidHandler();
       }
     }
 
-    window.addEventListener("load", function () {
+    window.addEventListener("load", async function () {
       const token = getToken();
 
-      console.log("\n=== PAGE LOADED ===");
-      console.log("Timestamp:", new Date().toISOString());
-      console.log("Token from URL:", new URLSearchParams(window.location.search).get("token"));
-      console.log("Token from session:", sessionStorage.getItem("plaid_token"));
-      console.log("Final token:", token);
-      console.log("===================\n");
+      console.log("\n=== VERIFY PAGE LOADED ===");
+      console.log("Token exists:", Boolean(token));
+      console.log("==========================\n");
 
       if (!token) {
-        showError("Verification token is missing. Please open the original link from your email.");
+        showError(
+          "Verification token is missing. Please open the original link from your email."
+        );
+        setStatus("Verification token is missing.", false);
+        setButtonLoading(false);
         return;
+      }
+
+      try {
+        setStatus("Checking your current application stage...");
+
+        const result = await validateTokenAndRoute(token);
+
+        if (result.redirected) {
+          return;
+        }
+
+        window.setTimeout(() => {
+          startIDV();
+        }, 150);
+      } catch (error) {
+        console.error(
+          "Token validation or stage routing failed:",
+          error
+        );
+
+        showError(
+          error.message ||
+            "We couldn't verify this link right now."
+        );
+        setStatus("Verification link is not available.", false);
+        setButtonLoading(false);
       }
     });
   </script>
