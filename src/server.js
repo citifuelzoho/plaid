@@ -1525,8 +1525,7 @@ app.post(
       ) {
         return res.status(400).json({
           success: false,
-          message:
-            "token is required",
+          message: "token is required",
         });
       }
 
@@ -1536,9 +1535,7 @@ app.post(
       );
 
       const validation =
-        await validateLeadToken(
-          token
-        );
+        await validateLeadToken(token);
 
       if (!validation.valid) {
         console.log(
@@ -1548,55 +1545,108 @@ app.post(
 
         return res
           .status(
-            validation.statusCode ||
-              403
+            validation.statusCode || 403
           )
           .json({
             success: false,
-            message:
-              validation.message,
+            message: validation.message,
           });
       }
 
-      const { lead } = validation;
+      /*
+       * validateLeadToken() quyidagilarni qaytaradi:
+       * {
+       *   valid: true,
+       *   crmToken,
+       *   lead,
+       *   paymentCondition
+       * }
+       */
+      const {
+        lead,
+        crmToken,
+      } = validation;
 
+      /*
+       * MUHIM:
+       * Plaid client_user_id sifatida Lead ID emas,
+       * CRM'dagi Plaid_Token yuboriladi.
+       */
       const plaidClientUserId =
-        String(lead.id);
+        String(
+          crmToken ||
+          lead[zohoPlaidTokenField] ||
+          token
+        ).trim();
+
+      if (!plaidClientUserId) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Plaid token is missing on the Lead",
+        });
+      }
+
+      /*
+       * Xavfsizlik uchun request token va CRM token
+       * bir xil ekanini tekshiramiz.
+       */
+      if (
+        normalizeText(
+          plaidClientUserId
+        ) !==
+        normalizeText(token)
+      ) {
+        console.error(
+          "Request token and CRM token do not match"
+        );
+
+        return res.status(403).json({
+          success: false,
+          message:
+            "Verification token does not match the CRM Lead",
+        });
+      }
 
       console.log(
         "Creating Plaid Link Token"
       );
 
       console.log(
-        "client_user_id:",
-        plaidClientUserId
+        "Lead ID:",
+        lead.id
+      );
+
+      console.log(
+        "Plaid client_user_id token:",
+        maskToken(
+          plaidClientUserId
+        )
       );
 
       const plaidResponse =
-        await plaidClient.linkTokenCreate(
-          {
-            user: {
-              client_user_id:
-                plaidClientUserId,
-            },
+        await plaidClient.linkTokenCreate({
+          user: {
+            client_user_id:
+              plaidClientUserId,
+          },
 
-            client_name:
-              "United Transports",
+          client_name:
+            "United Transports",
 
-            products: [
-              "identity_verification",
-            ],
+          products: [
+            "identity_verification",
+          ],
 
-            identity_verification: {
-              template_id:
-                plaidTemplateId,
-            },
+          identity_verification: {
+            template_id:
+              plaidTemplateId,
+          },
 
-            country_codes: ["US"],
+          country_codes: ["US"],
 
-            language: "en",
-          }
-        );
+          language: "en",
+        });
 
       await updateLeadFieldsBestEffort(
         lead.id,
@@ -1618,8 +1668,7 @@ app.post(
 
       console.log(
         "Plaid request ID:",
-        plaidResponse.data
-          .request_id
+        plaidResponse.data.request_id
       );
 
       console.log(
@@ -1630,12 +1679,10 @@ app.post(
         success: true,
 
         link_token:
-          plaidResponse.data
-            .link_token,
+          plaidResponse.data.link_token,
 
         request_id:
-          plaidResponse.data
-            .request_id,
+          plaidResponse.data.request_id,
       });
     } catch (error) {
       console.error(
@@ -1666,21 +1713,19 @@ app.post(
         "=============================================\n"
       );
 
-      return res
-        .status(500)
-        .json({
-          success: false,
+      return res.status(500).json({
+        success: false,
 
-          message:
-            "Failed to validate token or create Plaid link token",
+        message:
+          "Failed to validate token or create Plaid link token",
 
-          error:
-            process.env.NODE_ENV ===
-            "development"
-              ? error.response?.data ||
-                error.message
-              : undefined,
-        });
+        error:
+          process.env.NODE_ENV ===
+          "development"
+            ? error.response?.data ||
+              error.message
+            : undefined,
+      });
     }
   }
 );
