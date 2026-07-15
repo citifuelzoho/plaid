@@ -147,9 +147,12 @@ const zohoLeadStatusField = String(
 ).trim();
 
 const zohoAllowedLeadStatus = String(
-  process.env.ZOHO_ALLOWED_LEAD_STATUS ||
-    "Interested"
-).trim();
+  process.env.ZOHO_ALLOWED_LEAD_STATUSES ||
+    "App Sent,Application Filled"
+)
+  .split(",")
+  .map((status) => status.trim())
+  .filter(Boolean);
 
 const zohoTokenStatusField = String(
   process.env.ZOHO_TOKEN_STATUS_FIELD ||
