@@ -531,7 +531,41 @@ function normalizePaymentCondition(value) {
 function formatZohoDateTime(
   date = new Date()
 ) {
-  return date.toISOString();
+  const pad = (value, width = 2) =>
+    String(value).padStart(width, "0");
+
+  const year = date.getUTCFullYear();
+  const month = pad(
+    date.getUTCMonth() + 1
+  );
+  const day = pad(
+    date.getUTCDate()
+  );
+  const hours = pad(
+    date.getUTCHours()
+  );
+  const minutes = pad(
+    date.getUTCMinutes()
+  );
+  const seconds = pad(
+    date.getUTCSeconds()
+  );
+
+  /*
+   * Zoho CRM API DateTime maydonlari
+   * "Z" (Zulu) formatini emas, balki
+   * aniq timezone offset (+00:00)
+   * formatini kutadi, va millisekund
+   * bo'lmasligi kerak. JS'ning
+   * date.toISOString() esa
+   * "2026-07-15T14:33:35.834Z" kabi
+   * qaytaradi — bu Zoho tomonidan
+   * ba'zan INVALID_DATA sifatida rad
+   * etiladi. Shu sabab qo'lda to'g'ri
+   * formatga o'giramiz:
+   * "2026-07-15T14:33:35+00:00"
+   */
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+00:00`;
 }
 
 /* =========================================================
