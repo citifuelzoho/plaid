@@ -665,69 +665,153 @@
       return null;
     }
 
+    async function fetchTokenValidation(
+      token
+    ) {
+      return requestJson(
+        TOKEN_VALIDATE_API,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            token,
+          }),
+        }
+      );
+    }
+
+    /*
+     * MUHIM: Foydalanuvchi Zoho formani
+     * to'ldirib, /verify sahifasiga
+     * o'tkazilganda, index.html allaqachon
+     * CRM'da Plaid_Stage = "Plaid verification"
+     * deb yozgan bo'ladi. Lekin Zoho CRM'ning
+     * COQL/qidiruv indeksi yangi yozilgan
+     * qiymatni darhol ko'rsatmasligi mumkin
+     * (eventual consistency, odatda bir necha
+     * soniya). Shu sabab bu yerdagi validate
+     * chaqiruvi hali eski bosqichni ("Zoho form")
+     * qaytarib, foydalanuvchini bekorga yana
+     * formaga qaytarib yuborishi mumkin edi.
+     *
+     * Buning oldini olish uchun: agar biz
+     * /verify sahifasida turib, natija bizni
+     * "/" ga (orqaga) qaytarishni aytsa — bu
+     * ehtimol eskirgan ma'lumot, shuning uchun
+     * darhol qaytarish o'rniga bir necha marta
+     * kutib-qayta so'raymiz. Faqat barcha
+     * urinishlardan keyin ham hali "/" bo'lib
+     * qolsa, chindan ham orqaga qaytaramiz.
+     */
     async function validateTokenAndRoute(
       token
     ) {
-      const data =
-        await requestJson(
-          TOKEN_VALIDATE_API,
-          {
-            method: "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-
-            body: JSON.stringify({
-              token,
-            }),
-          }
-        );
-
-      console.log(
-        "Token validation response:",
-        data
-      );
-
-      if (data.valid !== true) {
-        throw new Error(
-          data.message ||
-          "This application link is invalid."
-        );
-      }
-
-      const plaidStage =
-        data.stage ||
-        data.Plaid_Stage ||
-        data.plaid_stage ||
-        data.record?.Plaid_Stage ||
-        "";
-
-      const targetRoute =
-        getRouteFromPlaidStage(
-          plaidStage
-        );
-
-      if (!targetRoute) {
-        throw new Error(
-          `Unknown Plaid Stage: ${
-            plaidStage || "empty"
-          }`
-        );
-      }
-
       const currentRoute =
         normalizeRoute(
           window.location.pathname
         );
+
+      const maxAttempts = 4;
+      const retryDelayMs = 1000;
+
+      let data = null;
+      let targetRoute = null;
+
+      for (
+        let attempt = 1;
+        attempt <= maxAttempts;
+        attempt++
+      ) {
+        data =
+          await fetchTokenValidation(
+            token
+          );
+
+        console.log(
+          `Token validation response (attempt ${attempt}):`,
+          data
+        );
+
+        if (data.valid !== true) {
+          throw new Error(
+            data.message ||
+            "This application link is invalid."
+          );
+        }
+
+        const plaidStage =
+          data.stage ||
+          data.Plaid_Stage ||
+          data.plaid_stage ||
+          data.record?.Plaid_Stage ||
+          "";
+
+        targetRoute =
+          getRouteFromPlaidStage(
+            plaidStage
+          );
+
+        if (!targetRoute) {
+          throw new Error(
+            `Unknown Plaid Stage: ${
+              plaidStage || "empty"
+            }`
+          );
+        }
+
+        if (
+          targetRoute ===
+          currentRoute
+        ) {
+          return {
+            redirected: false,
+            data,
+          };
+        }
+
+        const looksStale =
+          currentRoute ===
+            "/verify" &&
+          targetRoute === "/" &&
+          attempt < maxAttempts;
+
+        if (looksStale) {
+          console.log(
+            `Plaid Stage looks stale ("${plaidStage}"). Retrying in ${retryDelayMs}ms (attempt ${attempt}/${maxAttempts})...`
+          );
+
+          setStatus(
+            "Confirming your verification stage...",
+            true
+          );
+
+          await new Promise(
+            (resolve) =>
+              window.setTimeout(
+                resolve,
+                retryDelayMs
+              )
+          );
+
+          continue;
+        }
+
+        break;
+      }
 
       if (
         targetRoute !==
         currentRoute
       ) {
         setStatus(
-          `Continuing from ${plaidStage} stage...`,
+          `Continuing from ${
+            data.stage || ""
+          } stage...`,
           true
         );
 
