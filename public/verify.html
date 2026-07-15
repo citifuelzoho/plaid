@@ -323,6 +323,41 @@
     </section>
   </main>
 
+  <script>
+    /*
+     * MUHIM: Zoho Form o'z "Redirect URL after
+     * submit" sozlamasi orqali foydalanuvchini
+     * shu /verify sahifasiga olib keladi. Zoho
+     * forma bizning index.html'da <iframe> ichida
+     * ko'rsatilgani sababli, ba'zi hollarda Zoho
+     * bu redirektni iframe'ning O'ZI ICHIDA amalga
+     * oshirishi mumkin (ya'ni /verify kichkina
+     * forma o'rnida ochilib qoladi, butun sahifa
+     * emas). Buning oldini olish uchun: agar bu
+     * skript o'zini iframe ichida topsa, darhol
+     * top-level (asosiy) oynani shu manzilga
+     * o'tkazadi va qolgan hamma narsani to'xtatadi.
+     */
+    (function breakOutOfIframe() {
+      try {
+        if (window.top !== window.self) {
+          window.top.location.href =
+            window.location.href;
+        }
+      } catch (error) {
+        try {
+          window.top.location.href =
+            window.location.href;
+        } catch (innerError) {
+          console.warn(
+            "Could not break out of iframe:",
+            innerError
+          );
+        }
+      }
+    })();
+  </script>
+
   <script
     src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"
   ></script>
@@ -680,6 +715,7 @@
 
           body: JSON.stringify({
             token,
+            context: "verify",
           }),
         }
       );
@@ -1287,6 +1323,17 @@
     window.addEventListener(
       "load",
       async function () {
+        if (window.top !== window.self) {
+          /*
+           * Hali iframe ichidamiz — breakOutOfIframe()
+           * allaqachon asosiy oynani /verify'ga
+           * yo'naltirmoqda. Bu yerdagi qolgan
+           * logikani (Plaid'ni ochish va h.k.)
+           * iframe ichida ishga tushirmaymiz.
+           */
+          return;
+        }
+
         const token =
           getToken();
 

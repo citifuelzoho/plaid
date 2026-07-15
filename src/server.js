@@ -1125,7 +1125,7 @@ app.post(
         new Date().toISOString()
       );
 
-      const { token } = req.body;
+      const { token, context } = req.body;
 
       if (
         !token ||
@@ -1138,6 +1138,17 @@ app.post(
             "token is required",
         });
       }
+
+      const requestContext = String(
+        context || "form"
+      )
+        .trim()
+        .toLowerCase();
+
+      console.log(
+        "Request context:",
+        requestContext
+      );
 
       const validation =
         await validateLeadToken(
@@ -1170,11 +1181,11 @@ app.post(
           ] || ""
         ).trim();
 
-      const effectivePlaidStage =
+      let effectivePlaidStage =
         currentPlaidStage ||
         PLAID_STAGE_ZOHO_FORM;
 
-      const normalizedStage =
+      let normalizedStage =
         normalizePlaidStage(
           effectivePlaidStage
         );
@@ -1183,6 +1194,53 @@ app.post(
         normalizePlaidStage(
           PLAID_STAGE_ZOHO_FORM
         );
+
+      let stageWasAdvanced = false;
+
+      /*
+       * Zoho Form endi o'zining "Redirect URL"
+       * sozlamasi orqali foydalanuvchini
+       * to'g'ridan-to'g'ri /verify sahifasiga
+       * olib boradi (bizning JS orqali emas).
+       * Shu sabab, agar /verify sahifasi token'ni
+       * tekshirsa va CRM'da bosqich hali "Zoho form"
+       * bo'lib qolgan bo'lsa — demak foydalanuvchi
+       * hozirgina formani to'ldirib shu yerga
+       * kelgan. Bosqichni SHU SO'ROV ICHIDA
+       * "Plaid verification"ga o'zgartiramiz va
+       * yangilangan qiymatni darhol javobda
+       * qaytaramiz — bu alohida yozish/o'qish
+       * so'rovlari orasidagi kechikish (Zoho COQL
+       * eventual consistency) muammosini butunlay
+       * bartaraf etadi.
+       */
+      if (
+        requestContext === "verify" &&
+        normalizedStage ===
+          normalizedZohoFormStage
+      ) {
+        console.log(
+          "Verify page detected stage still on Zoho form — advancing to Plaid verification now."
+        );
+
+        await updateLeadFields(
+          lead.id,
+          {
+            [zohoPlaidStageField]:
+              PLAID_STAGE_VERIFICATION,
+          }
+        );
+
+        effectivePlaidStage =
+          PLAID_STAGE_VERIFICATION;
+
+        normalizedStage =
+          normalizePlaidStage(
+            PLAID_STAGE_VERIFICATION
+          );
+
+        stageWasAdvanced = true;
+      }
 
       let selectedForm = null;
 
@@ -1227,8 +1285,15 @@ app.post(
       /*
        * Plaid Stage bo‘sh bo‘lsa
        * birinchi bosqichga o‘rnatamiz.
+       * (Agar yuqorida allaqachon
+       * "Plaid verification"ga
+       * o'tkazilgan bo'lsa, bu yerga
+       * kirmaymiz.)
        */
-      if (!currentPlaidStage) {
+      if (
+        !currentPlaidStage &&
+        !stageWasAdvanced
+      ) {
         console.log(
           "First opening detected"
         );
@@ -1246,7 +1311,7 @@ app.post(
           },
           "Set stage to Zoho form"
         );
-      } else {
+      } else if (!stageWasAdvanced) {
         console.log(
           "Plaid Stage already exists:",
           currentPlaidStage
@@ -1317,6 +1382,11 @@ app.post(
 
 /* =========================================================
    SET PLAID VERIFICATION STAGE
+   (Endi standart oqimda ishlatilmaydi — Zoho o'z
+   "Redirect URL"i orqali to'g'ridan-to'g'ri /verify'ga
+   o'tkazadi, va /api/token/validate shu yerda bosqichni
+   o'zi ilgari suradi. Bu endpoint qo'lda/zaxira sifatida
+   qoldirilgan.)
 ========================================================= */
 
 app.post(

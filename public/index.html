@@ -181,14 +181,6 @@
       min-height: 320px;
     }
 
-    .redirecting {
-      display: none;
-      padding: 24px;
-      text-align: center;
-      font-size: 14px;
-      color: #666;
-    }
-
     .error-card {
       max-width: 500px;
       background: #fff;
@@ -498,9 +490,6 @@
           </div>
 
           <div id="zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ" style="display:none;"></div>
-          <div class="redirecting" id="redirecting">
-            Application submitted. Redirecting to identity verification...
-          </div>
         </div>
       </div>
     </div>
@@ -508,13 +497,11 @@
 
   <script>
     const TOKEN_VALIDATE_API = "/api/token/validate";
-    const SET_VERIFICATION_STAGE_API = "/api/stage/verification";
 
     const ALLOWED_ZOHO_ORIGINS = new Set([
       "https://forms.zohopublic.com",
     ]);
 
-    let isRedirecting = false;
     let currentToken = null;
 
     function getToken() {
@@ -685,7 +672,7 @@
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ token, context: "form" }),
       });
 
       console.log("Token validation response:", data);
@@ -739,84 +726,6 @@
         redirected: false,
         data,
       };
-    }
-
-    async function redirectToVerify() {
-      if (isRedirecting) {
-        return;
-      }
-
-      const token =
-        currentToken || sessionStorage.getItem("plaid_token");
-
-      if (!token) {
-        showError(
-          "Verification token was lost before redirecting to Plaid."
-        );
-        return;
-      }
-
-      isRedirecting = true;
-
-      const redirecting = document.getElementById("redirecting");
-      const formContainer = document.getElementById(
-        "zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ"
-      );
-
-      if (redirecting) {
-        redirecting.style.display = "block";
-        redirecting.textContent =
-          "Application submitted. Preparing identity verification...";
-      }
-
-      if (formContainer) {
-        formContainer.style.display = "none";
-      }
-
-      try {
-        /*
-         * Zoho form muvaffaqiyatli yuborilgandan keyin avval
-         * CRM stage "Plaid verification" ga o'zgartiriladi.
-         * Shundan keyingina /verify sahifasiga o'tiladi.
-         */
-        const data = await requestJson(
-          SET_VERIFICATION_STAGE_API,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ token }),
-          }
-        );
-
-        if (data.success !== true) {
-          throw new Error(
-            data.message || "Could not prepare identity verification."
-          );
-        }
-
-        const verifyUrl =
-          "/verify?token=" + encodeURIComponent(token);
-
-        try {
-          window.top.location.assign(verifyUrl);
-        } catch (error) {
-          window.location.assign(verifyUrl);
-        }
-      } catch (error) {
-        console.error(
-          "Could not change Plaid Stage to verification:",
-          error
-        );
-
-        isRedirecting = false;
-
-        showError(
-          error.message ||
-            "The application was submitted, but identity verification could not be prepared."
-        );
-      }
     }
 
     function mountZohoForm(token, formType, formUrl) {
@@ -875,6 +784,29 @@
 
       formContainer.appendChild(iframe);
 
+      /*
+       * MUHIM: Zoho forma yuborilgandan keyingi
+       * navigatsiya (/verify sahifasiga o'tish)
+       * ENDI ZOHONING O'ZI tomonidan, Zoho Forms
+       * builder'dagi "Redirect URL after submit"
+       * sozlamasi orqali amalga oshiriladi:
+       *
+       *   https://SIZNING-DOMENINGIZ/verify?token=${Plaid_Token}
+       *
+       * (${Plaid_Token} — formadagi Plaid_Token
+       * yashirin maydonining merge-tegi, u URL
+       * parametridan to'ldiriladi, chunki
+       * buildZohoFormUrl() token'ni ?Plaid_Token=
+       * sifatida iframe manziliga qo'shadi.)
+       *
+       * Shu sababli bu yerdagi postMessage
+       * listener endi FAQAT iframe balandligini
+       * moslashtirish uchun ishlatiladi — forma
+       * yuborilganda o'zimiz qo'lda /verify'ga
+       * o'tkazish (redirect) qilmaymiz, aks holda
+       * Zoho redirekti bilan ziddiyat/qo'sh
+       * o'tish yuzaga kelishi mumkin.
+       */
       window.addEventListener(
         "message",
         function (event) {
@@ -896,9 +828,6 @@
 
           const zfPerma = zfData[0];
           const parsedHeight = Number.parseInt(zfData[1], 10);
-          const isSubmitted =
-            zfData.length >= 3 &&
-            String(zfData[2] || "").trim() !== "";
 
           const formIframe =
             formContainer.getElementsByTagName("iframe")[0];
@@ -917,10 +846,6 @@
             if (formIframe.style.height !== newHeight) {
               formIframe.style.height = newHeight;
             }
-          }
-
-          if (isSubmitted) {
-            redirectToVerify();
           }
         },
         false
