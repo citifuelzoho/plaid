@@ -284,9 +284,8 @@
       </h1>
 
       <p class="description">
-        Plaid will open automatically.
-        Follow the secure steps to verify
-        your identity.
+        Click the button below to start your secure
+        identity verification with Plaid.
       </p>
 
       <div class="status-box">
@@ -296,7 +295,7 @@
         ></div>
 
         <span id="status-text">
-          Preparing secure verification...
+          Checking your application link...
         </span>
       </div>
 
@@ -311,6 +310,7 @@
         class="verify-btn"
         id="verify-btn"
         onclick="startIDV()"
+        disabled
       >
         Start Identity Verification →
       </button>
@@ -1250,12 +1250,23 @@
             return;
           }
 
-          window.setTimeout(
-            () => {
-              startIDV();
-            },
-            150
+          /*
+           * MUHIM: Bu yerda avval avtomatik
+           * startIDV() chaqirilardi (setTimeout
+           * orqali), shuning uchun Plaid sahifa
+           * ochilishi bilan o'zi ochilib ketardi.
+           * Endi Plaid FAQAT foydalanuvchi
+           * "Start Identity Verification" tugmasini
+           * bosganda ochiladi — sahifa yuklanganda
+           * faqat token tekshiriladi va tugma
+           * bosilishga tayyor holatga keltiriladi.
+           */
+          setStatus(
+            "Click the button below to start verification.",
+            false
           );
+
+          setButtonLoading(false);
         } catch (error) {
           console.error(
             "Token validation or stage routing failed:",
