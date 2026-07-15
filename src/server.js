@@ -150,9 +150,9 @@ const zohoAllowedLeadStatus = String(
   process.env.ZOHO_ALLOWED_LEAD_STATUS ||
     "App Sent,Application Filled"
 )
-.split(",")
-.map((status) => status.trim())
-.filter(Boolean);
+  .split(",")
+  .map((status) => status.trim())
+  .filter(Boolean);
 
 const zohoTokenStatusField = String(
   process.env.ZOHO_TOKEN_STATUS_FIELD ||
@@ -333,7 +333,7 @@ console.log(
 
 console.log(
   "ZOHO_ALLOWED_LEAD_STATUS:",
-  zohoAllowedLeadStatus
+  zohoAllowedLeadStatus.join(", ")
 );
 
 console.log(
@@ -966,33 +966,37 @@ async function validateLeadToken(
         ""
     ).trim();
 
-  if (
-    normalizeText(currentLeadStatus) !==
-    normalizeText(
-      zohoAllowedLeadStatus
-    )
-  ) {
-    console.log(
-      "VALIDATION RESULT: LEAD STATUS NOT ALLOWED"
-    );
+  const normalizedAllowedStatuses =
+  zohoAllowedLeadStatus.map((status) =>
+    normalizeText(status)
+  );
 
-    console.log(
-      "Current Lead Status:",
-      currentLeadStatus
-    );
+if (
+  !normalizedAllowedStatuses.includes(
+    normalizeText(currentLeadStatus)
+  )
+) {
+  console.log(
+    "VALIDATION RESULT: LEAD STATUS NOT ALLOWED"
+  );
 
-    console.log(
-      "Required Lead Status:",
-      zohoAllowedLeadStatus
-    );
+  console.log(
+    "Current Lead Status:",
+    currentLeadStatus
+  );
 
-    return {
-      valid: false,
-      statusCode: 403,
-      message:
-        "This verification link is no longer active",
-    };
-  }
+  console.log(
+    "Required Lead Status:",
+    zohoAllowedLeadStatus.join(", ")
+  );
+
+  return {
+    valid: false,
+    statusCode: 403,
+    message:
+      "This verification link is no longer active",
+  };
+}
 
   const tokenStatus = String(
     lead[zohoTokenStatusField] || ""
