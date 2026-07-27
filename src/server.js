@@ -169,25 +169,21 @@ const zohoPlaidStageField = String(
     "Plaid_Stage"
 ).trim();
 
-const zohoPaymentConditionField = String(
-  process.env
-    .ZOHO_PAYMENT_CONDITION_FIELD ||
-    "Payment_Condition"
+const zohoFuelCardNameField = String(
+  process.env.ZOHO_FUEL_CARD_NAME_FIELD ||
+    "Fuel_Card_Name"
 ).trim();
 
 /* =========================================================
    ZOHO FORM URLS FROM .ENV
 ========================================================= */
 
-const zohoPrepaidFormUrl = String(
-  process.env.ZOHO_FORM_PREPAID_URL ||
-    ""
+const zohoFormUrl = String(
+  process.env.ZOHO_FORM_URL || ""
 ).trim();
 
-const zohoCreditLineFormUrl = String(
-  process.env
-    .ZOHO_FORM_CREDIT_LINE_URL ||
-    ""
+const zohoFormVeonUrl = String(
+  process.env.ZOHO_FORM_VEON_URL || ""
 ).trim();
 
 /* =========================================================
@@ -240,31 +236,31 @@ if (!zohoRefreshToken) {
   );
 }
 
-if (!zohoPrepaidFormUrl) {
+if (!zohoFormUrl) {
   throw new Error(
-    "ZOHO_FORM_PREPAID_URL is missing in .env"
+    "ZOHO_FORM_URL is missing in .env"
   );
 }
 
-if (!zohoCreditLineFormUrl) {
+if (!zohoFormVeonUrl) {
   throw new Error(
-    "ZOHO_FORM_CREDIT_LINE_URL is missing in .env"
-  );
-}
-
-try {
-  new URL(zohoPrepaidFormUrl);
-} catch (error) {
-  throw new Error(
-    "ZOHO_FORM_PREPAID_URL is not a valid URL"
+    "ZOHO_FORM_VEON_URL is missing in .env"
   );
 }
 
 try {
-  new URL(zohoCreditLineFormUrl);
+  new URL(zohoFormUrl);
 } catch (error) {
   throw new Error(
-    "ZOHO_FORM_CREDIT_LINE_URL is not a valid URL"
+    "ZOHO_FORM_URL is not a valid URL"
+  );
+}
+
+try {
+  new URL(zohoFormVeonUrl);
+} catch (error) {
+  throw new Error(
+    "ZOHO_FORM_VEON_URL is not a valid URL"
   );
 }
 
@@ -352,18 +348,18 @@ console.log(
 );
 
 console.log(
-  "ZOHO_PAYMENT_CONDITION_FIELD:",
-  zohoPaymentConditionField
+  "ZOHO_FUEL_CARD_NAME_FIELD:",
+  zohoFuelCardNameField
 );
 
 console.log(
-  "ZOHO_FORM_PREPAID_URL exists:",
-  Boolean(zohoPrepaidFormUrl)
+  "ZOHO_FORM_URL exists:",
+  Boolean(zohoFormUrl)
 );
 
 console.log(
-  "ZOHO_FORM_CREDIT_LINE_URL exists:",
-  Boolean(zohoCreditLineFormUrl)
+  "ZOHO_FORM_VEON_URL exists:",
+  Boolean(zohoFormVeonUrl)
 );
 
 console.log(
@@ -527,7 +523,7 @@ function normalizePlaidStage(value) {
   return normalizeText(value);
 }
 
-function normalizePaymentCondition(value) {
+function normalizeFuelCardName(value) {
   return normalizeText(value);
 }
 
@@ -572,37 +568,30 @@ function formatZohoDateTime(
 }
 
 /* =========================================================
-   PAYMENT CONDITION FORM ROUTING
+   FUEL CARD NAME FORM ROUTING
 ========================================================= */
 
-function getFormConfigForPaymentCondition(
-  paymentCondition
+function getFormConfigForFuelCardName(
+  fuelCardName
 ) {
-  const normalizedCondition =
-    normalizePaymentCondition(
-      paymentCondition
+  const normalizedFuelCardName =
+    normalizeFuelCardName(
+      fuelCardName
     );
 
-  if (normalizedCondition === "prepaid") {
-    return {
-      formType: "prepaid",
-      formUrl: zohoPrepaidFormUrl,
-    };
-  }
+  const isVeon =
+    normalizedFuelCardName.includes(
+      "veon"
+    );
 
-  if (
-    normalizedCondition ===
-      "credit line" ||
-    normalizedCondition ===
-      "creditline"
-  ) {
-    return {
-      formType: "credit_line",
-      formUrl: zohoCreditLineFormUrl,
-    };
-  }
-
-  return null;
+  return {
+    formType: isVeon
+      ? "veon"
+      : "default",
+    formUrl: isVeon
+      ? zohoFormVeonUrl
+      : zohoFormUrl,
+  };
 }
 
 /* =========================================================
@@ -785,7 +774,7 @@ async function validateLeadToken(
       ${zohoTokenStatusField},
       ${zohoTokenUsedField},
       ${zohoPlaidStageField},
-      ${zohoPaymentConditionField}
+      ${zohoFuelCardNameField}
     FROM ${zohoLeadsModule}
     WHERE ${zohoPlaidTokenField} = '${escapedToken}'
     LIMIT 2
@@ -937,8 +926,8 @@ async function validateLeadToken(
   );
 
   console.log(
-    "CRM Payment Condition:",
-    lead[zohoPaymentConditionField]
+    "CRM Fuel Card Name:",
+    lead[zohoFuelCardNameField]
   );
 
   const savedToken = String(
@@ -1061,9 +1050,9 @@ if (
     };
   }
 
-  const paymentCondition = String(
+  const fuelCardName = String(
     lead[
-      zohoPaymentConditionField
+      zohoFuelCardNameField
     ] || ""
   ).trim();
 
@@ -1072,8 +1061,8 @@ if (
   );
 
   console.log(
-    "Payment Condition:",
-    paymentCondition || "(empty)"
+    "Fuel Card Name:",
+    fuelCardName || "(empty)"
   );
 
   console.log(
@@ -1084,7 +1073,7 @@ if (
     valid: true,
     crmToken,
     lead,
-    paymentCondition,
+    fuelCardName,
   };
 }
 
@@ -1140,8 +1129,8 @@ app.get("/health", (req, res) => {
 
     zoho_forms_configured:
       Boolean(
-        zohoPrepaidFormUrl &&
-          zohoCreditLineFormUrl
+        zohoFormUrl &&
+          zohoFormVeonUrl
       ),
 
     timestamp:
@@ -1212,7 +1201,7 @@ app.post(
 
       const {
         lead,
-        paymentCondition,
+        fuelCardName,
       } = validation;
 
       const currentPlaidStage =
@@ -1287,35 +1276,23 @@ app.post(
 
       /*
        * Faqat Zoho Form bosqichida
-       * Payment Condition bo‘yicha
-       * form tanlanadi.
+       * Fuel_Card_Name bo‘yicha form tanlanadi:
+       * - "Veon" contain bo‘lsa ZOHO_FORM_VEON_URL
+       * - aks holda ZOHO_FORM_URL
        */
       if (
         normalizedStage ===
         normalizedZohoFormStage
       ) {
         selectedForm =
-          getFormConfigForPaymentCondition(
-            paymentCondition
+          getFormConfigForFuelCardName(
+            fuelCardName
           );
 
-        if (!selectedForm) {
-          console.log(
-            "Unsupported Payment Condition:",
-            paymentCondition ||
-              "(empty)"
-          );
-
-          return res
-            .status(422)
-            .json({
-              success: false,
-              valid: false,
-
-              message:
-                "Payment Condition must be Prepaid or Credit line",
-            });
-        }
+        console.log(
+          "Fuel Card Name:",
+          fuelCardName || "(empty)"
+        );
 
         console.log(
           "Selected Form Type:",
@@ -1373,8 +1350,8 @@ app.post(
         stage:
           effectivePlaidStage,
 
-        payment_condition:
-          paymentCondition,
+        fuel_card_name:
+          fuelCardName,
 
         form_type:
           selectedForm?.formType ||
@@ -1600,7 +1577,7 @@ app.post(
        *   valid: true,
        *   crmToken,
        *   lead,
-       *   paymentCondition
+       *   fuelCardName
        * }
        */
       const {

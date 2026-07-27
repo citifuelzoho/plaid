@@ -746,24 +746,25 @@
         ".form-header p"
       );
 
-      if (formType === "prepaid") {
-        if (formTitle) {
-          formTitle.textContent = "Prepaid Application Form";
-        }
-
-        if (formDescription) {
-          formDescription.textContent =
-            "Please complete the prepaid application form.";
-        }
-      } else if (formType === "credit_line") {
+      if (formType === "veon") {
         if (formTitle) {
           formTitle.textContent =
-            "Credit Line Application Form";
+            "Veon Fuel Card Application Form";
         }
 
         if (formDescription) {
           formDescription.textContent =
-            "Please complete the credit line application form.";
+            "Please complete the Veon fuel card application form.";
+        }
+      } else if (formType === "default") {
+        if (formTitle) {
+          formTitle.textContent =
+            "Fuel Card Application Form";
+        }
+
+        if (formDescription) {
+          formDescription.textContent =
+            "Please complete the fuel card application form.";
         }
       } else {
         throw new Error(
@@ -878,28 +879,26 @@
           result.data.form_url || ""
         ).trim();
 
-        const paymentCondition = String(
-          result.data.payment_condition || ""
+        const fuelCardName = String(
+          result.data.fuel_card_name || ""
         ).trim();
 
         if (!formType || !formUrl) {
           throw new Error(
-            `No Zoho Form is configured for Payment Condition: ${
-              paymentCondition || "empty"
-            }`
+            "No Zoho Form is configured."
           );
         }
 
         console.log(
-          "Payment Condition:",
-          paymentCondition
+          "Fuel Card Name:",
+          fuelCardName
         );
         console.log("Selected form type:", formType);
 
         setLoaderMessage(
-          formType === "prepaid"
-            ? "Loading your prepaid application"
-            : "Loading your credit line application"
+          formType === "veon"
+            ? "Loading your Veon fuel card application"
+            : "Loading your fuel card application"
         );
 
         mountZohoForm(token, formType, formUrl);
