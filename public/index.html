@@ -643,7 +643,7 @@
       }
     }
 
-    function buildZohoFormUrl(token, formUrl) {
+    function buildZohoFormUrl(token, fuelCardName, formUrl) {
       if (!formUrl || String(formUrl).trim() === "") {
         throw new Error(
           "Zoho Form URL was not returned by the server."
@@ -661,6 +661,7 @@
       }
 
       url.searchParams.set("Plaid_Token", token);
+      url.searchParams.set("FUEL_CARD", fuelCardName || "");
       return url.toString();
     }
 
@@ -776,7 +777,7 @@
       };
     }
 
-    function mountZohoForm(token, formType, formUrl) {
+    function mountZohoForm(token, formType, formUrl, fuelCardName) {
       const formContainer = document.getElementById(
         "zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ"
       );
@@ -823,7 +824,11 @@
       formContainer.style.display = "block";
 
       const iframe = document.createElement("iframe");
-      iframe.src = buildZohoFormUrl(token, formUrl);
+      iframe.src = buildZohoFormUrl(
+        token,
+        fuelCardName,
+        formUrl
+      );
       iframe.style.border = "none";
       iframe.style.width = "100%";
       iframe.style.height = "calc(100vh - 124px)";
@@ -946,7 +951,7 @@
             : "Loading your fuel card application"
         );
 
-        mountZohoForm(token, formType, formUrl);
+        mountZohoForm(token, formType, formUrl, fuelCardName);
         hideLoader();
       } catch (error) {
         console.error(
