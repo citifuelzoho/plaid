@@ -150,11 +150,15 @@
       padding: 32px;
       display: flex;
       justify-content: center;
+      min-width: 0;
     }
 
     .form-container {
       width: 100%;
       max-width: 800px;
+      display: flex;
+      flex-direction: column;
+      min-height: calc(100vh - 124px);
     }
 
     .form-header {
@@ -180,6 +184,23 @@
       overflow: hidden;
       position: relative;
       min-height: 320px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ {
+      width: 100%;
+      flex: 1;
+      min-height: calc(100vh - 124px);
+    }
+
+    #zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ iframe {
+      display: block;
+      width: 100% !important;
+      height: calc(100vh - 124px) !important;
+      min-height: calc(100vh - 124px);
+      border: 0 !important;
     }
 
     .error-card {
@@ -391,10 +412,36 @@
     }
 
     @media (max-width: 768px) {
-      .sidebar { display: none; }
-      .form-area { padding: 16px; }
-      .topnav { padding: 0 16px; }
-      .progress-step span { display: none; }
+      .sidebar {
+        display: none;
+      }
+
+      .form-area {
+        padding: 16px;
+        min-height: calc(100vh - 60px);
+      }
+
+      .form-container {
+        min-height: calc(100vh - 92px);
+      }
+
+      .form-card {
+        min-height: calc(100vh - 92px);
+      }
+
+      #zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ,
+      #zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ iframe {
+        min-height: calc(100vh - 92px);
+        height: calc(100vh - 92px) !important;
+      }
+
+      .topnav {
+        padding: 0 16px;
+      }
+
+      .progress-step span {
+        display: none;
+      }
     }
   </style>
 </head>
@@ -778,9 +825,10 @@
       const iframe = document.createElement("iframe");
       iframe.src = buildZohoFormUrl(token, formUrl);
       iframe.style.border = "none";
-      iframe.style.height = "404px";
       iframe.style.width = "100%";
-      iframe.style.transition = "height 0.5s ease";
+      iframe.style.height = "calc(100vh - 124px)";
+      iframe.style.minHeight = "calc(100vh - 124px)";
+      iframe.style.display = "block";
       iframe.setAttribute("aria-label", "Application");
       iframe.setAttribute("allow", "clipboard-write");
 
@@ -842,13 +890,10 @@
             return;
           }
 
-          if (Number.isFinite(parsedHeight) && parsedHeight > 0) {
-            const newHeight = parsedHeight + 15 + "px";
-
-            if (formIframe.style.height !== newHeight) {
-              formIframe.style.height = newHeight;
-            }
-          }
+          // Keep the Zoho Form iframe full-height.
+          // Do not resize it based on Zoho's internal document height.
+          formIframe.style.height = "calc(100vh - 124px)";
+          formIframe.style.minHeight = "calc(100vh - 124px)";
         },
         false
       );
