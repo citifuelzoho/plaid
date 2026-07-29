@@ -519,12 +519,40 @@ function normalizeText(value) {
     .replace(/\s+/g, " ");
 }
 
+function extractStringValue(value) {
+  if (value == null) {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "object") {
+    if (typeof value.name === "string") {
+      return value.name;
+    }
+
+    if (typeof value.display_value === "string") {
+      return value.display_value;
+    }
+
+    if (typeof value.value === "string") {
+      return value.value;
+    }
+
+    return JSON.stringify(value);
+  }
+
+  return String(value);
+}
+
 function normalizePlaidStage(value) {
   return normalizeText(value);
 }
 
 function normalizeFuelCardName(value) {
-  return normalizeText(value);
+  return normalizeText(extractStringValue(value));
 }
 
 function formatZohoDateTime(
@@ -571,26 +599,14 @@ function formatZohoDateTime(
    FUEL CARD NAME FORM ROUTING
 ========================================================= */
 
-function getFormConfigForFuelCardName(
-  fuelCardName
-) {
-  const normalizedFuelCardName =
-    normalizeFuelCardName(
-      fuelCardName
-    );
+function getFormConfigForFuelCardName(fuelCardName) {
+  const normalizedFuelCardName = normalizeFuelCardName(fuelCardName);
 
-  const isVeon =
-    normalizedFuelCardName.includes(
-      "veon"
-    );
+  const isVeon = normalizedFuelCardName.includes("veon");
 
   return {
-    formType: isVeon
-      ? "veon"
-      : "default",
-    formUrl: isVeon
-      ? zohoFormVeonUrl
-      : zohoFormUrl,
+    formType: isVeon ? "veon" : "default",
+    formUrl: isVeon ? zohoFormVeonUrl : zohoFormUrl,
   };
 }
 
@@ -927,7 +943,8 @@ async function validateLeadToken(
 
   console.log(
     "CRM Fuel Card Name:",
-    lead[zohoFuelCardNameField]
+    extractStringValue(lead[zohoFuelCardNameField]) ||
+      JSON.stringify(lead[zohoFuelCardNameField])
   );
 
   const savedToken = String(
@@ -1050,10 +1067,8 @@ if (
     };
   }
 
-  const fuelCardName = String(
-    lead[
-      zohoFuelCardNameField
-    ] || ""
+  const fuelCardName = extractStringValue(
+    lead[zohoFuelCardNameField]
   ).trim();
 
   console.log(
