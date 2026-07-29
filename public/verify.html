@@ -1233,16 +1233,21 @@
                 );
 
                 try {
-                  await markCompleted(
-                    token,
-                    metadata
-                  );
-
                   sessionStorage.removeItem(
                     "plaid_token"
                   );
 
                   destroyPlaidHandler();
+
+                  void markCompleted(
+                    token,
+                    metadata
+                  ).catch((error) => {
+                    console.warn(
+                      "Completion sync failed after Plaid success:",
+                      error
+                    );
+                  });
 
                   window.location.replace(
                     COMPLETE_ROUTE
