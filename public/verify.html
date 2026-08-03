@@ -109,53 +109,6 @@
       justify-content: center;
     }
 
-    .page-loader-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 1200;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      background:
-        radial-gradient(circle at top, rgba(37, 99, 235, 0.14), transparent 36%),
-        linear-gradient(135deg, #f8fbff 0%, #eef4ff 100%);
-      backdrop-filter: blur(6px);
-    }
-
-    .page-loader-card {
-      width: min(520px, 100%);
-      padding: 32px 28px;
-      text-align: center;
-      border-radius: 24px;
-      background: rgba(255, 255, 255, 0.95);
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
-    }
-
-    .page-loader-ring {
-      width: 56px;
-      height: 56px;
-      margin: 0 auto 18px;
-      border-radius: 50%;
-      border: 4px solid rgba(37, 99, 235, 0.16);
-      border-top-color: #2563eb;
-      animation: spin 0.9s linear infinite;
-    }
-
-    .page-loader-title {
-      font-size: 20px;
-      font-weight: 700;
-      color: #111827;
-      margin-bottom: 8px;
-    }
-
-    .page-loader-subtitle {
-      font-size: 14px;
-      line-height: 1.5;
-      color: #4b5563;
-    }
-
     .card {
       width: 100%;
       max-width: 560px;
@@ -319,14 +272,6 @@
       </div>
     </div>
   </nav>
-
-  <div class="page-loader-overlay" id="pageLoader" style="display:none;">
-    <div class="page-loader-card">
-      <div class="page-loader-ring"></div>
-      <div class="page-loader-title" id="pageLoaderTitle">Preparing your verification</div>
-      <div class="page-loader-subtitle" id="pageLoaderSubtitle">Please wait while we finish the next step.</div>
-    </div>
-  </div>
 
   <main class="page">
     <section class="card">
@@ -550,32 +495,6 @@
         "?token=" +
         encodeURIComponent(token)
       );
-    }
-
-    function showPageLoader(title, subtitle) {
-      const overlay = document.getElementById("pageLoader");
-      const titleEl = document.getElementById("pageLoaderTitle");
-      const subtitleEl = document.getElementById("pageLoaderSubtitle");
-
-      if (overlay) {
-        overlay.style.display = "flex";
-      }
-
-      if (titleEl) {
-        titleEl.textContent = title || "Preparing your verification";
-      }
-
-      if (subtitleEl) {
-        subtitleEl.textContent = subtitle || "Please wait while we finish the next step.";
-      }
-    }
-
-    function hidePageLoader() {
-      const overlay = document.getElementById("pageLoader");
-
-      if (overlay) {
-        overlay.style.display = "none";
-      }
     }
 
     function setStatus(
@@ -1120,10 +1039,6 @@
 
       hideError();
       setButtonLoading(true);
-      showPageLoader(
-        "Opening secure verification",
-        "Please wait while we prepare your Plaid session."
-      );
 
       setStatus(
         "Loading Plaid securely..."
@@ -1223,10 +1138,6 @@
 
                 hideError();
                 setButtonLoading(true);
-                showPageLoader(
-                  "Finishing your verification",
-                  "We’re saving your completion status securely."
-                );
 
                 setStatus(
                   "Saving verification completion..."
@@ -1455,15 +1366,9 @@
           );
 
           setButtonLoading(false);
-          hidePageLoader();
 
           return;
         }
-
-        showPageLoader(
-          "Preparing your verification",
-          "We’re checking your secure link and setting up the next step."
-        );
 
         try {
           setStatus(
@@ -1498,7 +1403,6 @@
           );
 
           setButtonLoading(false);
-          hidePageLoader();
         } catch (error) {
           console.error(
             "Token validation or stage routing failed:",
@@ -1516,7 +1420,6 @@
           );
 
           setButtonLoading(false);
-          hidePageLoader();
         }
       }
     );
