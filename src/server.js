@@ -381,10 +381,15 @@ console.log("================================");
 
 /* =========================================================
    ZOHO ACCESS TOKEN CACHE
+   (includes an in-flight refresh lock to prevent multiple
+   concurrent requests from each triggering their own
+   Zoho OAuth refresh call, which can trip Zoho's
+   "too many requests continuously" rate limit)
 ========================================================= */
 
 let cachedZohoAccessToken = null;
 let zohoAccessTokenExpiresAt = 0;
+let inFlightZohoRefresh = null;
 
 async function getZohoAccessToken() {
   const currentTime = Date.now();
@@ -399,83 +404,103 @@ async function getZohoAccessToken() {
     return cachedZohoAccessToken;
   }
 
-  console.log(
-    "\n========== ZOHO ACCESS TOKEN REFRESH =========="
-  );
-
-  const requestBody =
-    new URLSearchParams({
-      refresh_token: zohoRefreshToken,
-      client_id: zohoClientId,
-      client_secret: zohoClientSecret,
-      grant_type: "refresh_token",
-    }).toString();
-
-  const response = await axios.post(
-    `${zohoAccountsUrl}/oauth/v2/token`,
-    requestBody,
-    {
-      headers: {
-        "Content-Type":
-          "application/x-www-form-urlencoded",
-      },
-
-      timeout: 15000,
-
-      validateStatus() {
-        return true;
-      },
-    }
-  );
-
-  console.log(
-    "Zoho OAuth HTTP status:",
-    response.status
-  );
-
-  if (
-    response.status < 200 ||
-    response.status >= 300 ||
-    !response.data?.access_token
-  ) {
-    console.error(
-      "Zoho OAuth response:",
-      response.data
+  // If a refresh is already in progress, reuse it instead of
+  // firing a second concurrent request to Zoho.
+  if (inFlightZohoRefresh) {
+    console.log(
+      "Reusing in-flight Zoho token refresh (avoided duplicate call)"
     );
 
-    throw new Error(
-      `Zoho access token was not returned: ${JSON.stringify(
-        response.data
-      )}`
-    );
+    return inFlightZohoRefresh;
   }
 
-  cachedZohoAccessToken =
-    response.data.access_token;
+  inFlightZohoRefresh = (async () => {
+    try {
+      console.log(
+        "\n========== ZOHO ACCESS TOKEN REFRESH =========="
+      );
 
-  const expiresInSeconds = Number(
-    response.data.expires_in || 3600
-  );
+      const requestBody =
+        new URLSearchParams({
+          refresh_token: zohoRefreshToken,
+          client_id: zohoClientId,
+          client_secret: zohoClientSecret,
+          grant_type: "refresh_token",
+        }).toString();
 
-  zohoAccessTokenExpiresAt =
-    currentTime +
-    expiresInSeconds * 1000;
+      const response = await axios.post(
+        `${zohoAccountsUrl}/oauth/v2/token`,
+        requestBody,
+        {
+          headers: {
+            "Content-Type":
+              "application/x-www-form-urlencoded",
+          },
 
-  console.log(
-    "Zoho access token refreshed successfully"
-  );
+          timeout: 15000,
 
-  console.log(
-    "Expires in:",
-    expiresInSeconds,
-    "seconds"
-  );
+          validateStatus() {
+            return true;
+          },
+        }
+      );
 
-  console.log(
-    "===============================================\n"
-  );
+      console.log(
+        "Zoho OAuth HTTP status:",
+        response.status
+      );
 
-  return cachedZohoAccessToken;
+      if (
+        response.status < 200 ||
+        response.status >= 300 ||
+        !response.data?.access_token
+      ) {
+        console.error(
+          "Zoho OAuth response:",
+          response.data
+        );
+
+        throw new Error(
+          `Zoho access token was not returned: ${JSON.stringify(
+            response.data
+          )}`
+        );
+      }
+
+      cachedZohoAccessToken =
+        response.data.access_token;
+
+      const expiresInSeconds = Number(
+        response.data.expires_in || 3600
+      );
+
+      zohoAccessTokenExpiresAt =
+        Date.now() +
+        expiresInSeconds * 1000;
+
+      console.log(
+        "Zoho access token refreshed successfully"
+      );
+
+      console.log(
+        "Expires in:",
+        expiresInSeconds,
+        "seconds"
+      );
+
+      console.log(
+        "===============================================\n"
+      );
+
+      return cachedZohoAccessToken;
+    } finally {
+      // Clear the lock whether the refresh succeeded or failed,
+      // so the next call is free to try again.
+      inFlightZohoRefresh = null;
+    }
+  })();
+
+  return inFlightZohoRefresh;
 }
 
 /* =========================================================
