@@ -4,6 +4,14 @@ require("dotenv").config({
   path: path.join(__dirname, "..", ".env"),
 });
 
+// TEMPORARY DIAGNOSTIC LOGGING
+// Confirms exactly which .env file this process loaded at
+// startup. Remove once the invalid_client issue is resolved.
+console.log(
+  "Loaded .env from:",
+  path.join(__dirname, "..", ".env")
+);
+
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
@@ -418,6 +426,30 @@ async function getZohoAccessToken() {
     try {
       console.log(
         "\n========== ZOHO ACCESS TOKEN REFRESH =========="
+      );
+
+      // TEMPORARY DIAGNOSTIC LOGGING
+      // Confirms the running process is actually using the
+      // credential values you expect. Remove once the
+      // invalid_client issue is resolved.
+      console.log(
+        "Refresh request client_id:",
+        zohoClientId
+      );
+
+      console.log(
+        "Refresh request secret length:",
+        zohoClientSecret.length
+      );
+
+      console.log(
+        "Refresh request refresh_token length:",
+        zohoRefreshToken.length
+      );
+
+      console.log(
+        "Refresh request accounts URL:",
+        zohoAccountsUrl
       );
 
       const requestBody =
