@@ -2,14 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1"
-  />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <title>
-    Verification Process — Identity Verification
-  </title>
+  <title>Verification Process — Identity Verification</title>
 
   <style>
     * {
@@ -268,6 +263,13 @@
 
       <div class="progress-step">
         <div class="progress-num">3</div>
+        <span>Agreement</span>
+      </div>
+
+      <div class="progress-line"></div>
+
+      <div class="progress-step">
+        <div class="progress-num">4</div>
         <span>Complete</span>
       </div>
     </div>
@@ -369,8 +371,20 @@
     const CREATE_LINK_TOKEN_API =
       "/api/idv/create_link_token";
 
-    const COMPLETE_IDV_API =
-      "/api/idv/complete";
+    /*
+     * Called from onSuccess once Plaid finishes. Agreement is
+     * a CARDLESS-ONLY step (gated by Fulfillment_Type on the
+     * server), so the server decides what happens next and
+     * tells us via `next_route`:
+     *   - Cardless leads: stage -> "Agreement",  next_route "/agreement"
+     *                     (token stays Active; completed later
+     *                     via agreement-complete.html)
+     *   - Physical leads: stage -> "Completed",  next_route "/complete"
+     *                     (token marked Used immediately — same
+     *                     as before Agreement existed)
+     */
+    const IDV_SUCCESS_API =
+      "/api/idv/success";
 
     const COMPLETE_ROUTE =
       "/complete";
@@ -466,6 +480,10 @@
 
       if (route === "/verify.html") {
         return "/verify";
+      }
+
+      if (route === "/agreement.html") {
+        return "/agreement";
       }
 
       if (route === "/complete.html") {
@@ -686,6 +704,17 @@
           "verification"
       ) {
         return "/verify";
+      }
+
+      /*
+       * NEW: Agreement stage — shown to every lead
+       * after Plaid succeeds.
+       */
+      if (
+        normalizedStage ===
+        "agreement"
+      ) {
+        return "/agreement";
       }
 
       if (
@@ -941,16 +970,24 @@
       );
     }
 
-    async function markCompleted(
+    /*
+     * Reports Plaid success to the server and returns its
+     * routing decision. For Cardless leads this only advances
+     * Plaid_Stage to "Agreement" (token stays Active). For
+     * Physical leads it finalizes completion immediately
+     * (stage -> Completed, token -> Used) — see
+     * /api/idv/success on the server for the actual rule.
+     */
+    async function reportPlaidSuccess(
       token,
       metadata
     ) {
       console.log(
-        "Updating CRM stage to Completed..."
+        "Reporting Plaid success to server..."
       );
 
       return requestJson(
-        COMPLETE_IDV_API,
+        IDV_SUCCESS_API,
         {
           method: "POST",
 
@@ -1140,32 +1177,52 @@
                 setButtonLoading(true);
 
                 setStatus(
-                  "Saving verification completion..."
+                  "Saving verification progress..."
                 );
 
                 try {
-                  sessionStorage.removeItem(
-                    "plaid_token"
-                  );
-
                   destroyPlaidHandler();
 
-                  void markCompleted(
-                    token,
-                    metadata
-                  ).catch((error) => {
-                    console.warn(
-                      "Completion sync failed after Plaid success:",
-                      error
+                  const result =
+                    await reportPlaidSuccess(
+                      token,
+                      metadata
                     );
-                  });
 
-                  window.location.replace(
-                    COMPLETE_ROUTE
-                  );
+                  const nextRoute =
+                    result.next_route ===
+                    "/complete"
+                      ? "/complete"
+                      : "/agreement";
+
+                  if (
+                    nextRoute ===
+                    "/complete"
+                  ) {
+                    // Non-Veon: fully done. No Agreement step.
+                    sessionStorage.removeItem(
+                      "plaid_token"
+                    );
+
+                    window.location.replace(
+                      COMPLETE_ROUTE
+                    );
+                  } else {
+                    /*
+                     * Veon: token stays in sessionStorage — the
+                     * Agreement page still needs it to validate
+                     * and pick the Veon Agreement form.
+                     */
+                    window.location.replace(
+                      buildRouteUrl(
+                        nextRoute,
+                        token
+                      )
+                    );
+                  }
                 } catch (error) {
                   console.error(
-                    "Failed to update CRM completion:",
+                    "Failed to process Plaid success:",
                     error
                   );
 

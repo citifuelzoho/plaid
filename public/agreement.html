@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" type="image/png" href="./assets/favicon.png" />
 
-  <title>Verification Process — Application</title>
+  <title>Verification Process — Agreement</title>
 
   <style>
     * {
@@ -64,6 +64,10 @@
       font-weight: 500;
     }
 
+    .progress-step.done {
+      color: #15803d;
+    }
+
     .progress-num {
       width: 24px;
       height: 24px;
@@ -79,6 +83,11 @@
 
     .progress-step.active .progress-num {
       background: #000;
+      color: #fff;
+    }
+
+    .progress-step.done .progress-num {
+      background: #16a34a;
       color: #fff;
     }
 
@@ -191,13 +200,13 @@
       flex-direction: column;
     }
 
-    #zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ {
+    #zf_div_agreement {
       width: 100%;
       flex: 1;
       min-height: calc(100vh - 124px);
     }
 
-    #zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ iframe {
+    #zf_div_agreement iframe {
       display: block;
       width: 100% !important;
       height: calc(100vh - 124px) !important;
@@ -243,20 +252,6 @@
       box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
       backdrop-filter: blur(12px);
       text-align: center;
-    }
-
-    .loader-badge {
-      width: 64px;
-      height: 64px;
-      margin: 0 auto 18px;
-      border-radius: 18px;
-      display: grid;
-      place-items: center;
-      font-size: 20px;
-      font-weight: 800;
-      color: #fff;
-      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-      box-shadow: 0 14px 30px rgba(37, 99, 235, 0.3);
     }
 
     .loader-ring {
@@ -331,8 +326,8 @@
         min-height: calc(100vh - 92px);
       }
 
-      #zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ,
-      #zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ iframe {
+      #zf_div_agreement,
+      #zf_div_agreement iframe {
         min-height: calc(100vh - 92px);
         height: calc(100vh - 92px) !important;
       }
@@ -373,17 +368,17 @@
     <div class="logo">Verification <span>Process</span></div>
 
     <div class="progress-wrap">
-      <div class="progress-step active">
-        <div class="progress-num">1</div>
+      <div class="progress-step done">
+        <div class="progress-num">✓</div>
         <span>Application</span>
       </div>
       <div class="progress-line"></div>
-      <div class="progress-step">
-        <div class="progress-num">2</div>
+      <div class="progress-step done">
+        <div class="progress-num">✓</div>
         <span>Verify Identity</span>
       </div>
       <div class="progress-line"></div>
-      <div class="progress-step">
+      <div class="progress-step active">
         <div class="progress-num">3</div>
         <span>Agreement</span>
       </div>
@@ -400,8 +395,8 @@
       <div>
         <div class="sidebar-title">About this form</div>
         <div class="info-item">
-          <div class="info-icon">📋</div>
-          <span>Fill out your application information completely</span>
+          <div class="info-icon">📄</div>
+          <span>Review and sign your agreement to finish</span>
         </div>
         <div class="info-item">
           <div class="info-icon">🔒</div>
@@ -409,7 +404,7 @@
         </div>
         <div class="info-item">
           <div class="info-icon">⏳</div>
-          <span>Takes about 5–10 minutes to complete</span>
+          <span>Takes about 2–5 minutes to complete</span>
         </div>
       </div>
       <div class="secure-badge">
@@ -420,8 +415,8 @@
     <div class="form-area">
       <div class="form-container">
         <div class="form-header">
-          <h1>Application Form</h1>
-          <p>Please fill out all required fields marked with *</p>
+          <h1 id="formTitle">Agreement</h1>
+          <p id="formDescription">Please review and complete your agreement.</p>
         </div>
         <div class="form-card" id="formCard">
 
@@ -429,7 +424,7 @@
           <div class="truck-loader-wrap" id="truckLoader">
             <div class="loader-panel">
               <div class="loader-ring"></div>
-              <div class="loader-title">Preparing your secure application</div>
+              <div class="loader-title">Preparing your agreement</div>
               <div class="loader-subtitle" id="truckLoaderMessage">Verifying your application link</div>
               <div class="loader-progress">
                 <span></span>
@@ -437,11 +432,35 @@
             </div>
           </div>
 
-          <div id="zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ" style="display:none;"></div>
+          <div id="zf_div_agreement" style="display:none;"></div>
         </div>
       </div>
     </div>
   </div>
+
+  <script>
+    /*
+     * MUHIM: Xuddi verify.html'dagi kabi — agar Zoho Form
+     * bizni /agreement'ga iframe ICHIDA redirekt qilib
+     * qo'ysa, top-level oynani shu manzilga o'tkazamiz.
+     */
+    (function breakOutOfIframe() {
+      try {
+        if (window.top !== window.self) {
+          window.top.location.href = window.location.href;
+        }
+      } catch (error) {
+        try {
+          window.top.location.href = window.location.href;
+        } catch (innerError) {
+          console.warn(
+            "Could not break out of iframe:",
+            innerError
+          );
+        }
+      }
+    })();
+  </script>
 
   <script>
     const TOKEN_VALIDATE_API = "/api/token/validate";
@@ -520,7 +539,7 @@
     function showError(message) {
       document.body.innerHTML = `
         <div class="error-card">
-          <strong>Application link is invalid.</strong><br />
+          <strong>Agreement link is invalid.</strong><br />
           ${escapeHtml(message)}<br />
           Please open the original application link from your email and try again.
         </div>
@@ -539,7 +558,7 @@
       }
     }
 
-    function showLoader(message = "Preparing your secure application") {
+    function showLoader(message = "Preparing your agreement") {
       const loader = document.getElementById("truckLoader");
 
       if (loader) {
@@ -560,7 +579,7 @@
     function buildZohoFormUrl(token, fuelCardName, formUrl) {
       if (!formUrl || String(formUrl).trim() === "") {
         throw new Error(
-          "Zoho Form URL was not returned by the server."
+          "Zoho Agreement Form URL was not returned by the server."
         );
       }
 
@@ -570,7 +589,7 @@
         url = new URL(String(formUrl).trim());
       } catch (error) {
         throw new Error(
-          "The selected Zoho Form URL is invalid."
+          "The selected Zoho Agreement Form URL is invalid."
         );
       }
 
@@ -619,10 +638,6 @@
         return "/verify";
       }
 
-      /*
-       * NEW: Agreement stage — every lead now passes through
-       * this step after Plaid, regardless of Fuel_Card_Name.
-       */
       if (normalizedStage === "agreement") {
         return "/agreement";
       }
@@ -638,108 +653,148 @@
     }
 
     async function validateTokenAndRoute(token) {
-      const data = await requestJson(TOKEN_VALIDATE_API, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ token, context: "form" }),
-      });
-
-      console.log("Token validation response:", data);
-
-      if (data.valid !== true) {
-        throw new Error(
-          data.message || "This application link is invalid."
-        );
-      }
-
-      const plaidStage =
-        data.stage ||
-        data.Plaid_Stage ||
-        data.plaid_stage ||
-        data.record?.Plaid_Stage ||
-        "";
-
       /*
-       * Zoho form          -> /
-       * Plaid verification -> /verify
-       * Agreement          -> /agreement
-       * Completed          -> /complete
+       * Same eventual-consistency retry pattern as verify.html:
+       * /api/idv/success already advances Plaid_Stage to
+       * "Agreement" right after Plaid succeeds, but Zoho COQL
+       * may briefly still return "Plaid verification". The
+       * server's own validate handler also advances the stage
+       * as a safety net (context: "agreement"), so a couple of
+       * retries here is normally enough to settle.
        */
-      const targetRoute = getRouteFromPlaidStage(plaidStage);
+      const maxAttempts = 4;
+      const retryDelayMs = 1000;
 
-      if (!targetRoute) {
-        throw new Error(
-          `Unknown Plaid Stage: ${plaidStage || "empty"}`
-        );
-      }
+      let data = null;
+      let targetRoute = null;
 
       const currentRoute = normalizeRoute(
         window.location.pathname
       );
 
+      for (
+        let attempt = 1;
+        attempt <= maxAttempts;
+        attempt++
+      ) {
+        data = await requestJson(TOKEN_VALIDATE_API, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ token, context: "agreement" }),
+        });
+
+        console.log(
+          `Token validation response (attempt ${attempt}):`,
+          data
+        );
+
+        if (data.valid !== true) {
+          throw new Error(
+            data.message || "This agreement link is invalid."
+          );
+        }
+
+        const plaidStage =
+          data.stage ||
+          data.Plaid_Stage ||
+          data.plaid_stage ||
+          data.record?.Plaid_Stage ||
+          "";
+
+        targetRoute = getRouteFromPlaidStage(plaidStage);
+
+        if (!targetRoute) {
+          throw new Error(
+            `Unknown Plaid Stage: ${plaidStage || "empty"}`
+          );
+        }
+
+        if (targetRoute === currentRoute) {
+          return { redirected: false, data };
+        }
+
+        const looksStale =
+          currentRoute === "/agreement" &&
+          targetRoute === "/verify" &&
+          attempt < maxAttempts;
+
+        if (looksStale) {
+          console.log(
+            `Plaid Stage looks stale ("${plaidStage}"). Retrying in ${retryDelayMs}ms (attempt ${attempt}/${maxAttempts})...`
+          );
+
+          setLoaderMessage(
+            "Confirming your verification stage..."
+          );
+
+          await new Promise((resolve) =>
+            window.setTimeout(resolve, retryDelayMs)
+          );
+
+          continue;
+        }
+
+        break;
+      }
+
       if (targetRoute !== currentRoute) {
         setLoaderMessage(
-          `Continuing from ${plaidStage} stage`
+          `Continuing from ${data.stage || ""} stage`
         );
 
         window.location.replace(
           buildRouteUrl(targetRoute, token)
         );
 
-        return {
-          redirected: true,
-          data,
-        };
+        return { redirected: true, data };
       }
 
-      return {
-        redirected: false,
-        data,
-      };
+      return { redirected: false, data };
     }
 
-    function mountZohoForm(token, formType, formUrl, fuelCardName) {
+    function mountZohoAgreementForm(
+      token,
+      formType,
+      formUrl,
+      fuelCardName
+    ) {
       const formContainer = document.getElementById(
-        "zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ"
+        "zf_div_agreement"
       );
 
       if (!formContainer) {
-        showError("Zoho form container was not found.");
+        showError("Zoho Agreement form container was not found.");
         return;
       }
 
-      const formTitle = document.querySelector(
-        ".form-header h1"
-      );
-      const formDescription = document.querySelector(
-        ".form-header p"
+      const formTitle = document.getElementById("formTitle");
+      const formDescription = document.getElementById(
+        "formDescription"
       );
 
       if (formType === "veon") {
         if (formTitle) {
-          formTitle.textContent =
-            "Veon Fuel Card Application Form";
+          formTitle.textContent = "Veon Agreement";
         }
 
         if (formDescription) {
           formDescription.textContent =
-            "Please complete the Veon fuel card application form.";
+            "Please review and complete your Veon fuel card agreement.";
         }
       } else if (formType === "default") {
         if (formTitle) {
-          formTitle.textContent =
-            "Fuel Card Application Form";
+          formTitle.textContent = "Agreement";
         }
 
         if (formDescription) {
           formDescription.textContent =
-            "Please complete the fuel card application form.";
+            "Please review and complete your agreement.";
         }
       } else {
         throw new Error(
-          `Unknown Zoho Form type: ${formType || "empty"}`
+          `Unknown Agreement Form type: ${formType || "empty"}`
         );
       }
 
@@ -748,22 +803,18 @@
 
       showLoader(
         formType === "veon"
-          ? "Loading your Veon application form"
-          : "Loading your application form"
+          ? "Loading your Veon agreement"
+          : "Loading your agreement"
       );
 
       const iframe = document.createElement("iframe");
-      iframe.src = buildZohoFormUrl(
-        token,
-        fuelCardName,
-        formUrl
-      );
+      iframe.src = buildZohoFormUrl(token, fuelCardName, formUrl);
       iframe.style.border = "none";
       iframe.style.width = "100%";
       iframe.style.height = "calc(100vh - 124px)";
       iframe.style.minHeight = "calc(100vh - 124px)";
       iframe.style.display = "block";
-      iframe.setAttribute("aria-label", "Application");
+      iframe.setAttribute("aria-label", "Agreement");
       iframe.setAttribute("allow", "clipboard-write");
 
       iframe.addEventListener("load", () => {
@@ -777,27 +828,22 @@
       formContainer.appendChild(iframe);
 
       /*
-       * MUHIM: Zoho forma yuborilgandan keyingi
-       * navigatsiya (/verify sahifasiga o'tish)
-       * ENDI ZOHONING O'ZI tomonidan, Zoho Forms
-       * builder'dagi "Redirect URL after submit"
-       * sozlamasi orqali amalga oshiriladi:
+       * MUHIM: Xuddi Application formadagi kabi, bu yerda ham
+       * yakuniy navigatsiya (/agreement-complete'ga o'tish)
+       * ZOHONING O'ZI tomonidan amalga oshiriladi — Zoho Forms
+       * builder'dagi Agreement forma uchun "Redirect URL after
+       * submit" sozlamasini quyidagicha o'rnating:
        *
-       *   https://SIZNING-DOMENINGIZ/verify?token=${Plaid_Token}
+       *   https://YOUR-DOMAIN/agreement-complete?token=${Plaid_Token}
        *
-       * (${Plaid_Token} — formadagi Plaid_Token
-       * yashirin maydonining merge-tegi, u URL
-       * parametridan to'ldiriladi, chunki
-       * buildZohoFormUrl() token'ni ?Plaid_Token=
+       * (${Plaid_Token} — shu formadagi Plaid_Token yashirin
+       * maydonining merge-tegi, u URL parametridan to'ldiriladi,
+       * chunki buildZohoFormUrl() token'ni ?Plaid_Token=
        * sifatida iframe manziliga qo'shadi.)
        *
-       * Shu sababli bu yerdagi postMessage
-       * listener endi FAQAT iframe balandligini
-       * moslashtirish uchun ishlatiladi — forma
-       * yuborilganda o'zimiz qo'lda /verify'ga
-       * o'tkazish (redirect) qilmaymiz, aks holda
-       * Zoho redirekti bilan ziddiyat/qo'sh
-       * o'tish yuzaga kelishi mumkin.
+       * Bu yerdagi postMessage listener FAQAT iframe
+       * balandligini moslashtirish uchun ishlatiladi — forma
+       * yuborilganda o'zimiz qo'lda redirect qilmaymiz.
        */
       window.addEventListener(
         "message",
@@ -819,7 +865,6 @@
           }
 
           const zfPerma = zfData[0];
-          const parsedHeight = Number.parseInt(zfData[1], 10);
 
           const formIframe =
             formContainer.getElementsByTagName("iframe")[0];
@@ -833,7 +878,6 @@
           }
 
           // Keep the Zoho Form iframe full-height.
-          // Do not resize it based on Zoho's internal document height.
           formIframe.style.height = "calc(100vh - 124px)";
           formIframe.style.minHeight = "calc(100vh - 124px)";
         },
@@ -841,7 +885,7 @@
       );
     }
 
-    async function validateAndLoadForm() {
+    async function validateAndLoadAgreement() {
       const token = getToken();
 
       if (!token) {
@@ -859,11 +903,11 @@
         }
 
         const formType = String(
-          result.data.form_type || ""
+          result.data.agreement_form_type || ""
         ).trim();
 
         const formUrl = String(
-          result.data.form_url || ""
+          result.data.agreement_form_url || ""
         ).trim();
 
         const fuelCardName = String(
@@ -872,23 +916,25 @@
 
         if (!formType || !formUrl) {
           throw new Error(
-            "No Zoho Form is configured."
+            "No Zoho Agreement Form is configured."
           );
         }
 
-        console.log(
-          "Fuel Card Name:",
-          fuelCardName
-        );
-        console.log("Selected form type:", formType);
+        console.log("Fuel Card Name:", fuelCardName);
+        console.log("Selected agreement form type:", formType);
 
         setLoaderMessage(
           formType === "veon"
-            ? "Loading your Veon fuel card application"
-            : "Loading your fuel card application"
+            ? "Loading your Veon agreement"
+            : "Loading your agreement"
         );
 
-        mountZohoForm(token, formType, formUrl, fuelCardName);
+        mountZohoAgreementForm(
+          token,
+          formType,
+          formUrl,
+          fuelCardName
+        );
         hideLoader();
       } catch (error) {
         console.error(
@@ -903,7 +949,7 @@
       }
     }
 
-    validateAndLoadForm();
+    validateAndLoadAgreement();
   </script>
 </body>
 </html>

@@ -182,6 +182,18 @@ const zohoFuelCardNameField = String(
     "Fuel_Card_Name"
 ).trim();
 
+/*
+ * Gates whether the Agreement step applies at all: Cardless ->
+ * Agreement is required; Physical -> no Agreement, straight to
+ * Completed after Plaid. Independent of Fuel_Card_Name/isVeon,
+ * which only picks which form VARIANT (Veon vs default) is
+ * shown for the Application and, when it applies, Agreement.
+ */
+const zohoFulfillmentTypeField = String(
+  process.env.ZOHO_FULFILLMENT_TYPE_FIELD ||
+    "Fulfillment_Type"
+).trim();
+
 /* =========================================================
    ZOHO FORM URLS FROM .ENV
 ========================================================= */
@@ -192,6 +204,25 @@ const zohoFormUrl = String(
 
 const zohoFormVeonUrl = String(
   process.env.ZOHO_FORM_VEON_URL || ""
+).trim();
+
+/*
+ * AGREEMENT FORM URLS
+ * Whether Agreement applies at all is gated by Fulfillment_Type
+ * (Cardless -> Agreement required; Physical -> skipped, straight
+ * to Completed after Plaid). Fuel_Card_Name / isVeon is
+ * unrelated to that gate — it only picks which form VARIANT is
+ * shown once we already know Agreement applies:
+ *   Cardless + Veon     -> zohoAgreementFormVeonUrl
+ *   Cardless + non-Veon -> zohoAgreementFormUrl
+ *   Physical (either)   -> no Agreement form used at all
+ */
+const zohoAgreementFormUrl = String(
+  process.env.ZOHO_AGREEMENT_FORM_URL || ""
+).trim();
+
+const zohoAgreementFormVeonUrl = String(
+  process.env.ZOHO_AGREEMENT_FORM_VEON_URL || ""
 ).trim();
 
 /* =========================================================
@@ -215,6 +246,16 @@ const PLAID_STAGE_ZOHO_FORM = String(
 const PLAID_STAGE_VERIFICATION = String(
   process.env.ZOHO_STAGE_VERIFICATION ||
     "Plaid verification"
+).trim();
+
+/*
+ * Agreement stage, sits between Plaid verification and
+ * Completed. Only reached by Cardless leads (see
+ * Fulfillment_Type below) — Physical leads skip it entirely.
+ */
+const PLAID_STAGE_AGREEMENT = String(
+  process.env.ZOHO_STAGE_AGREEMENT ||
+    "Agreement"
 ).trim();
 
 const PLAID_STAGE_COMPLETED = String(
@@ -256,6 +297,18 @@ if (!zohoFormVeonUrl) {
   );
 }
 
+if (!zohoAgreementFormUrl) {
+  throw new Error(
+    "ZOHO_AGREEMENT_FORM_URL is missing in .env"
+  );
+}
+
+if (!zohoAgreementFormVeonUrl) {
+  throw new Error(
+    "ZOHO_AGREEMENT_FORM_VEON_URL is missing in .env"
+  );
+}
+
 try {
   new URL(zohoFormUrl);
 } catch (error) {
@@ -269,6 +322,22 @@ try {
 } catch (error) {
   throw new Error(
     "ZOHO_FORM_VEON_URL is not a valid URL"
+  );
+}
+
+try {
+  new URL(zohoAgreementFormUrl);
+} catch (error) {
+  throw new Error(
+    "ZOHO_AGREEMENT_FORM_URL is not a valid URL"
+  );
+}
+
+try {
+  new URL(zohoAgreementFormVeonUrl);
+} catch (error) {
+  throw new Error(
+    "ZOHO_AGREEMENT_FORM_VEON_URL is not a valid URL"
   );
 }
 
@@ -361,6 +430,11 @@ console.log(
 );
 
 console.log(
+  "ZOHO_FULFILLMENT_TYPE_FIELD:",
+  zohoFulfillmentTypeField
+);
+
+console.log(
   "ZOHO_FORM_URL exists:",
   Boolean(zohoFormUrl)
 );
@@ -371,6 +445,16 @@ console.log(
 );
 
 console.log(
+  "ZOHO_AGREEMENT_FORM_URL exists:",
+  Boolean(zohoAgreementFormUrl)
+);
+
+console.log(
+  "ZOHO_AGREEMENT_FORM_VEON_URL exists:",
+  Boolean(zohoAgreementFormVeonUrl)
+);
+
+console.log(
   "ZOHO_STAGE_ZOHO_FORM:",
   PLAID_STAGE_ZOHO_FORM
 );
@@ -378,6 +462,11 @@ console.log(
 console.log(
   "ZOHO_STAGE_VERIFICATION:",
   PLAID_STAGE_VERIFICATION
+);
+
+console.log(
+  "ZOHO_STAGE_AGREEMENT:",
+  PLAID_STAGE_AGREEMENT
 );
 
 console.log(
@@ -656,14 +745,41 @@ function formatZohoDateTime(
    FUEL CARD NAME FORM ROUTING
 ========================================================= */
 
-function getFormConfigForFuelCardName(fuelCardName) {
-  const normalizedFuelCardName = normalizeFuelCardName(fuelCardName);
+function isVeonFuelCardName(fuelCardName) {
+  return normalizeFuelCardName(fuelCardName).includes("veon");
+}
 
-  const isVeon = normalizedFuelCardName.includes("veon");
+function getFormConfigForFuelCardName(fuelCardName) {
+  const isVeon = isVeonFuelCardName(fuelCardName);
 
   return {
     formType: isVeon ? "veon" : "default",
     formUrl: isVeon ? zohoFormVeonUrl : zohoFormUrl,
+  };
+}
+
+/*
+ * Whether Agreement applies at all is gated by Fulfillment_Type
+ * (see isCardlessFulfillmentType below), NOT by Fuel_Card_Name.
+ * This helper should only be called once we already know
+ * Agreement applies (i.e. Fulfillment_Type is Cardless) — it
+ * just picks which form VARIANT to show, same isVeon pattern
+ * as the Application form.
+ */
+function isCardlessFulfillmentType(fulfillmentType) {
+  return normalizeText(fulfillmentType).includes(
+    "cardless"
+  );
+}
+
+function getAgreementFormConfigForFuelCardName(fuelCardName) {
+  const isVeon = isVeonFuelCardName(fuelCardName);
+
+  return {
+    formType: isVeon ? "veon" : "default",
+    formUrl: isVeon
+      ? zohoAgreementFormVeonUrl
+      : zohoAgreementFormUrl,
   };
 }
 
@@ -847,7 +963,8 @@ async function validateLeadToken(
       ${zohoTokenStatusField},
       ${zohoTokenUsedField},
       ${zohoPlaidStageField},
-      ${zohoFuelCardNameField}
+      ${zohoFuelCardNameField},
+      ${zohoFulfillmentTypeField}
     FROM ${zohoLeadsModule}
     WHERE ${zohoPlaidTokenField} = '${escapedToken}'
     LIMIT 2
@@ -1004,6 +1121,12 @@ async function validateLeadToken(
       JSON.stringify(lead[zohoFuelCardNameField])
   );
 
+  console.log(
+    "CRM Fulfillment Type:",
+    extractStringValue(lead[zohoFulfillmentTypeField]) ||
+      JSON.stringify(lead[zohoFulfillmentTypeField])
+  );
+
   const savedToken = String(
     lead[zohoPlaidTokenField] || ""
   )
@@ -1128,6 +1251,10 @@ if (
     lead[zohoFuelCardNameField]
   ).trim();
 
+  const fulfillmentType = extractStringValue(
+    lead[zohoFulfillmentTypeField]
+  ).trim();
+
   console.log(
     "VALIDATION RESULT: TOKEN IS ACTIVE"
   );
@@ -1135,6 +1262,11 @@ if (
   console.log(
     "Fuel Card Name:",
     fuelCardName || "(empty)"
+  );
+
+  console.log(
+    "Fulfillment Type:",
+    fulfillmentType || "(empty)"
   );
 
   console.log(
@@ -1146,6 +1278,7 @@ if (
     crmToken,
     lead,
     fuelCardName,
+    fulfillmentType,
   };
 }
 
@@ -1167,6 +1300,39 @@ app.get("/verify", (req, res) => {
     path.join(
       publicPath,
       "verify.html"
+    )
+  );
+});
+
+/*
+ * NEW: Agreement step. Shown to every lead after Plaid
+ * succeeds, regardless of Fuel_Card_Name.
+ */
+app.get("/agreement", (req, res) => {
+  res.sendFile(
+    path.join(
+      publicPath,
+      "agreement.html"
+    )
+  );
+});
+
+/*
+ * NEW: This is the page Zoho's "Redirect URL after submit"
+ * setting (on the Agreement form, in Zoho Forms builder)
+ * should point to, e.g.:
+ *
+ *   https://YOUR-DOMAIN/agreement-complete?token=${Plaid_Token}
+ *
+ * It finalizes the CRM update (stage -> Completed, token ->
+ * Used) and then forwards the user to /complete, mirroring
+ * how index.html hands off to /verify today.
+ */
+app.get("/agreement-complete", (req, res) => {
+  res.sendFile(
+    path.join(
+      publicPath,
+      "agreement-complete.html"
     )
   );
 });
@@ -1202,7 +1368,9 @@ app.get("/health", (req, res) => {
     zoho_forms_configured:
       Boolean(
         zohoFormUrl &&
-          zohoFormVeonUrl
+          zohoFormVeonUrl &&
+          zohoAgreementFormUrl &&
+          zohoAgreementFormVeonUrl
       ),
 
     timestamp:
@@ -1274,6 +1442,7 @@ app.post(
       const {
         lead,
         fuelCardName,
+        fulfillmentType,
       } = validation;
 
       const currentPlaidStage =
@@ -1295,6 +1464,16 @@ app.post(
       const normalizedZohoFormStage =
         normalizePlaidStage(
           PLAID_STAGE_ZOHO_FORM
+        );
+
+      const normalizedVerificationStage =
+        normalizePlaidStage(
+          PLAID_STAGE_VERIFICATION
+        );
+
+      const normalizedAgreementStage =
+        normalizePlaidStage(
+          PLAID_STAGE_AGREEMENT
         );
 
       let stageWasAdvanced = false;
@@ -1337,9 +1516,81 @@ app.post(
           PLAID_STAGE_VERIFICATION;
 
         normalizedStage =
-          normalizePlaidStage(
-            PLAID_STAGE_VERIFICATION
+          normalizedVerificationStage;
+
+        stageWasAdvanced = true;
+      }
+
+      /*
+       * Same eventual-consistency safety net as the "verify"
+       * block above, applied to the Agreement page.
+       * /api/idv/success already decides the correct next
+       * stage right after Plaid's onSuccess fires (Agreement
+       * for Cardless, Completed for everyone else), but if the
+       * Agreement page's own validate call lands before that
+       * write is visible in COQL, this catches it.
+       *
+       * IMPORTANT: Agreement is gated by Fulfillment_Type, NOT
+       * Fuel_Card_Name. If a Physical lead somehow lands on
+       * /agreement (stale link, bookmark, etc.), we do NOT show
+       * them an Agreement form — we finish the job here exactly
+       * like /api/idv/success would, so they end up at /complete.
+       */
+      if (
+        requestContext === "agreement" &&
+        normalizedStage ===
+          normalizedVerificationStage
+      ) {
+        const isCardlessLead =
+          isCardlessFulfillmentType(
+            fulfillmentType
           );
+
+        if (isCardlessLead) {
+          console.log(
+            "Agreement page detected stage still on Plaid verification — advancing to Agreement now."
+          );
+
+          await updateLeadFields(
+            lead.id,
+            {
+              [zohoPlaidStageField]:
+                PLAID_STAGE_AGREEMENT,
+            }
+          );
+
+          effectivePlaidStage =
+            PLAID_STAGE_AGREEMENT;
+
+          normalizedStage =
+            normalizedAgreementStage;
+        } else {
+          console.log(
+            "Physical lead reached the Agreement page — Agreement does not apply. Finalizing completion instead."
+          );
+
+          await updateLeadFields(
+            lead.id,
+            {
+              [zohoPlaidStageField]:
+                PLAID_STAGE_COMPLETED,
+
+              [zohoTokenStatusField]:
+                TOKEN_STATUS_USED,
+
+              [zohoTokenUsedField]:
+                formatZohoDateTime(),
+            }
+          );
+
+          effectivePlaidStage =
+            PLAID_STAGE_COMPLETED;
+
+          normalizedStage =
+            normalizePlaidStage(
+              PLAID_STAGE_COMPLETED
+            );
+        }
 
         stageWasAdvanced = true;
       }
@@ -1373,12 +1624,39 @@ app.post(
       }
 
       /*
+       * This stage is only ever reached by Cardless leads (see
+       * the Fulfillment_Type gate above / in /api/idv/success).
+       * The form VARIANT shown here still follows Fuel_Card_Name,
+       * same isVeon pattern as the Application form.
+       */
+      let selectedAgreementForm = null;
+
+      if (
+        normalizedStage ===
+        normalizedAgreementStage
+      ) {
+        selectedAgreementForm =
+          getAgreementFormConfigForFuelCardName(
+            fuelCardName
+          );
+
+        console.log(
+          "Fuel Card Name:",
+          fuelCardName || "(empty)"
+        );
+
+        console.log(
+          "Selected Agreement Form Type:",
+          selectedAgreementForm.formType
+        );
+      }
+
+      /*
        * Plaid Stage bo‘sh bo‘lsa
        * birinchi bosqichga o‘rnatamiz.
        * (Agar yuqorida allaqachon
-       * "Plaid verification"ga
-       * o'tkazilgan bo'lsa, bu yerga
-       * kirmaymiz.)
+       * boshqa bosqichga o'tkazilgan
+       * bo'lsa, bu yerga kirmaymiz.)
        */
       if (
         !currentPlaidStage &&
@@ -1431,6 +1709,14 @@ app.post(
 
         form_url:
           selectedForm?.formUrl ||
+          null,
+
+        agreement_form_type:
+          selectedAgreementForm?.formType ||
+          null,
+
+        agreement_form_url:
+          selectedAgreementForm?.formUrl ||
           null,
       });
     } catch (error) {
@@ -1821,7 +2107,237 @@ app.post(
 );
 
 /* =========================================================
-   COMPLETE PLAID VERIFICATION
+   PLAID VERIFICATION SUCCEEDED
+   (This is what verify.html's onSuccess calls now.)
+
+   Agreement is a CARDLESS-ONLY step (gated by Fulfillment_Type,
+   NOT Fuel_Card_Name):
+     - Cardless leads -> advance to "Agreement" stage, do NOT
+                         mark the token Used yet. Completion
+                         happens once the Agreement form is
+                         actually submitted (/api/idv/complete).
+     - Physical leads -> finalize immediately: stage ->
+                         "Completed", token -> "Used". Same
+                         behavior as before Agreement existed.
+
+   Fuel_Card_Name / isVeon plays no part in this decision — it
+   only picks which form VARIANT (Veon vs default) is shown for
+   the Application form, and later for the Agreement form on
+   the /agreement page itself, once we already know Agreement
+   applies.
+
+   The response tells the client which route to go to next
+   (next_route: "/agreement" or "/complete") so verify.html
+   doesn't need its own copy of this business rule.
+========================================================= */
+
+app.post(
+  "/api/idv/success",
+  async (req, res) => {
+    try {
+      console.log(
+        "\n========== IDV SUCCESS =========="
+      );
+
+      console.log(
+        "Timestamp:",
+        new Date().toISOString()
+      );
+
+      const { token } = req.body;
+
+      if (
+        !token ||
+        String(token).trim() === ""
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "token is required",
+        });
+      }
+
+      console.log(
+        "Received token:",
+        maskToken(token)
+      );
+
+      const validation =
+        await validateLeadToken(
+          token
+        );
+
+      if (!validation.valid) {
+        return res
+          .status(
+            validation.statusCode ||
+              403
+          )
+          .json({
+            success: false,
+            message:
+              validation.message,
+          });
+      }
+
+      const {
+        lead,
+        fuelCardName,
+        fulfillmentType,
+      } = validation;
+
+      const isCardless =
+        isCardlessFulfillmentType(
+          fulfillmentType
+        );
+
+      console.log(
+        "Lead ID:",
+        lead.id
+      );
+
+      console.log(
+        "Fulfillment Type:",
+        fulfillmentType || "(empty)"
+      );
+
+      console.log(
+        "Is Cardless:",
+        isCardless
+      );
+
+      console.log(
+        "Fuel Card Name:",
+        fuelCardName || "(empty)"
+      );
+
+      if (isCardless) {
+        console.log(
+          "Plaid Stage:",
+          PLAID_STAGE_AGREEMENT
+        );
+
+        await updateLeadFields(
+          lead.id,
+          {
+            [zohoPlaidStageField]:
+              PLAID_STAGE_AGREEMENT,
+          }
+        );
+
+        console.log(
+          "Lead advanced to Agreement stage"
+        );
+
+        console.log(
+          "==================================\n"
+        );
+
+        return res.json({
+          success: true,
+
+          message:
+            "Advanced to Agreement stage",
+
+          stage:
+            PLAID_STAGE_AGREEMENT,
+
+          next_route: "/agreement",
+        });
+      }
+
+      /*
+       * Physical: no Agreement step. Finalize completion right
+       * away, exactly like /api/idv/complete used to do
+       * directly from verify.html before Agreement existed.
+       */
+      const usedTime =
+        formatZohoDateTime();
+
+      console.log(
+        "Plaid Stage:",
+        PLAID_STAGE_COMPLETED
+      );
+
+      console.log(
+        "Token Status:",
+        TOKEN_STATUS_USED
+      );
+
+      await updateLeadFields(
+        lead.id,
+        {
+          [zohoPlaidStageField]:
+            PLAID_STAGE_COMPLETED,
+
+          [zohoTokenStatusField]:
+            TOKEN_STATUS_USED,
+
+          [zohoTokenUsedField]:
+            usedTime,
+        }
+      );
+
+      console.log(
+        "Lead marked Completed successfully (no Agreement step for this Fulfillment Type)"
+      );
+
+      console.log(
+        "==================================\n"
+      );
+
+      return res.json({
+        success: true,
+
+        message:
+          "Plaid verification completed",
+
+        stage:
+          PLAID_STAGE_COMPLETED,
+
+        next_route: "/complete",
+      });
+    } catch (error) {
+      console.error(
+        "\n========== IDV SUCCESS ERROR =========="
+      );
+
+      console.error(
+        "Timestamp:",
+        new Date().toISOString()
+      );
+
+      console.error(
+        "Message:",
+        error.message
+      );
+
+      console.error(
+        "Response:",
+        error.response?.data
+      );
+
+      console.error(
+        "========================================\n"
+      );
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+
+          message:
+            "Failed to process Plaid verification success",
+        });
+    }
+  }
+);
+
+/* =========================================================
+   COMPLETE VERIFICATION
+   (Now called once the Agreement form has been submitted —
+   see agreement-complete.html. Marks the Lead Completed and
+   the token Used.)
 ========================================================= */
 
 app.post(
@@ -1949,11 +2465,6 @@ app.post(
       console.error(
         "Message:",
         error.message
-      );
-
-      console.error(
-        "HTTP Status:",
-        error.response?.status
       );
 
       console.error(
