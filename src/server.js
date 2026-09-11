@@ -1305,8 +1305,8 @@ app.get("/verify", (req, res) => {
 });
 
 /*
- * NEW: Agreement step. Shown to every lead after Plaid
- * succeeds, regardless of Fuel_Card_Name.
+ * Agreement step. Only reached by Cardless leads (Fulfillment_Type
+ * gate — see /api/idv/success and /api/token/validate).
  */
 app.get("/agreement", (req, res) => {
   res.sendFile(
@@ -1318,22 +1318,31 @@ app.get("/agreement", (req, res) => {
 });
 
 /*
- * NEW: This is the page Zoho's "Redirect URL after submit"
- * setting (on the Agreement form, in Zoho Forms builder)
- * should point to, e.g.:
+ * Zoho's "Redirect URL after submit" setting (on both Agreement
+ * forms, in Zoho Forms builder) should point directly here now:
  *
- *   https://YOUR-DOMAIN/agreement-complete?token=${Plaid_Token}
+ *   https://YOUR-DOMAIN/complete?token=${Plaid_Token}
  *
- * It finalizes the CRM update (stage -> Completed, token ->
- * Used) and then forwards the user to /complete, mirroring
- * how index.html hands off to /verify today.
+ * complete.html itself finalizes the CRM update (stage ->
+ * Completed, token -> Used) when it sees a token in the URL, then
+ * shows the completed state. No separate hand-off page needed.
+ *
+ * This route only exists so that if the Zoho form's redirect
+ * setting still points at the old /agreement-complete URL, it
+ * keeps working — it just forwards straight to /complete with
+ * the same query string.
  */
 app.get("/agreement-complete", (req, res) => {
-  res.sendFile(
-    path.join(
-      publicPath,
-      "agreement-complete.html"
-    )
+  const queryString =
+    new URLSearchParams(
+      req.query
+    ).toString();
+
+  res.redirect(
+    302,
+    queryString
+      ? `/complete?${queryString}`
+      : "/complete"
   );
 });
 
@@ -2335,9 +2344,11 @@ app.post(
 
 /* =========================================================
    COMPLETE VERIFICATION
-   (Now called once the Agreement form has been submitted —
-   see agreement-complete.html. Marks the Lead Completed and
-   the token Used.)
+   (Called by complete.html itself, when it loads with a token
+   in the URL — meaning the Agreement form was just submitted
+   and Zoho redirected here. Marks the Lead Completed and the
+   token Used. Not called at all for Physical leads, whose
+   completion already happened in /api/idv/success.)
 ========================================================= */
 
 app.post(

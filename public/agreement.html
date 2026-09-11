@@ -829,17 +829,20 @@
 
       /*
        * MUHIM: Xuddi Application formadagi kabi, bu yerda ham
-       * yakuniy navigatsiya (/agreement-complete'ga o'tish)
-       * ZOHONING O'ZI tomonidan amalga oshiriladi — Zoho Forms
+       * yakuniy navigatsiya (/complete'ga o'tish) ZOHONING
+       * O'ZI tomonidan amalga oshiriladi — Zoho Forms
        * builder'dagi Agreement forma uchun "Redirect URL after
        * submit" sozlamasini quyidagicha o'rnating:
        *
-       *   https://YOUR-DOMAIN/agreement-complete?token=${Plaid_Token}
+       *   https://YOUR-DOMAIN/complete?token=${Plaid_Token}
        *
        * (${Plaid_Token} — shu formadagi Plaid_Token yashirin
        * maydonining merge-tegi, u URL parametridan to'ldiriladi,
        * chunki buildZohoFormUrl() token'ni ?Plaid_Token=
-       * sifatida iframe manziliga qo'shadi.)
+       * sifatida iframe manziliga qo'shadi.) complete.html o'zi
+       * shu token borligini ko'rib, /api/idv/complete'ni
+       * chaqirib CRM'ni yakunlaydi — alohida oraliq sahifa
+       * kerak emas.
        *
        * Bu yerdagi postMessage listener FAQAT iframe
        * balandligini moslashtirish uchun ishlatiladi — forma

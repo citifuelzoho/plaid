@@ -377,8 +377,10 @@
      * server), so the server decides what happens next and
      * tells us via `next_route`:
      *   - Cardless leads: stage -> "Agreement",  next_route "/agreement"
-     *                     (token stays Active; completed later
-     *                     via agreement-complete.html)
+     *                     (token stays Active; the Agreement
+     *                     form's own Zoho redirect later sends
+     *                     the user to /complete?token=..., which
+     *                     finalizes completion itself)
      *   - Physical leads: stage -> "Completed",  next_route "/complete"
      *                     (token marked Used immediately — same
      *                     as before Agreement existed)
