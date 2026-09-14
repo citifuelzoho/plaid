@@ -64,6 +64,10 @@
       font-weight: 500;
     }
 
+    .progress-step.done {
+      color: #15803d;
+    }
+
     .progress-num {
       width: 24px;
       height: 24px;
@@ -79,6 +83,11 @@
 
     .progress-step.active .progress-num {
       background: #000;
+      color: #fff;
+    }
+
+    .progress-step.done .progress-num {
+      background: #16a34a;
       color: #fff;
     }
 
@@ -372,7 +381,13 @@
   <nav class="topnav">
     <div class="logo">Verification <span>Process</span></div>
 
-    <div class="progress-wrap">
+    <!--
+      Initial markup assumes Cardless (4 steps) so there's no
+      blank flash before JS runs. Once /api/token/validate
+      returns is_cardless, renderProgress() rebuilds this to
+      3 steps for Physical leads.
+    -->
+    <div class="progress-wrap" id="progressWrap">
       <div class="progress-step active">
         <div class="progress-num">1</div>
         <span>Application</span>
@@ -555,6 +570,66 @@
       if (loader) {
         loader.style.display = "none";
       }
+    }
+
+    // ---------------------------------------------------------
+    // DYNAMIC PROGRESS NAV
+    // Cardless leads (Fulfillment_Type = Cardless) go through
+    // Application -> Verify Identity -> Agreement -> Complete.
+    // Physical leads skip Agreement entirely:
+    // Application -> Verify Identity -> Complete.
+    // `currentKey` identifies which step this page represents,
+    // so steps before it render as done (checkmark), the
+    // matching one as active, and the rest as pending numbers.
+    // ---------------------------------------------------------
+    function renderProgress(hasAgreement, currentKey) {
+      const wrap = document.getElementById("progressWrap");
+
+      if (!wrap) {
+        return;
+      }
+
+      const steps = hasAgreement
+        ? [
+            { key: "application", label: "Application" },
+            { key: "verify", label: "Verify Identity" },
+            { key: "agreement", label: "Agreement" },
+            { key: "complete", label: "Complete" },
+          ]
+        : [
+            { key: "application", label: "Application" },
+            { key: "verify", label: "Verify Identity" },
+            { key: "complete", label: "Complete" },
+          ];
+
+      const currentIndex = steps.findIndex(function (step) {
+        return step.key === currentKey;
+      });
+
+      wrap.innerHTML = steps
+        .map(function (step, index) {
+          let stateClass = "";
+          let numHtml = String(index + 1);
+
+          if (currentIndex !== -1 && index < currentIndex) {
+            stateClass = " done";
+            numHtml = "\u2713";
+          } else if (index === currentIndex) {
+            stateClass = " active";
+          }
+
+          const stepHtml =
+            '<div class="progress-step' + stateClass + '">' +
+            '<div class="progress-num">' + numHtml + "</div>" +
+            "<span>" + step.label + "</span>" +
+            "</div>";
+
+          const isLast = index === steps.length - 1;
+          const lineHtml = isLast ? "" : '<div class="progress-line"></div>';
+
+          return stepHtml + lineHtml;
+        })
+        .join("");
     }
 
     function buildZohoFormUrl(token, fuelCardName, formUrl) {
@@ -857,6 +932,13 @@
         if (result.redirected) {
           return;
         }
+
+        // Server now tells us Physical vs Cardless directly —
+        // rebuild the nav to 3 or 4 steps accordingly.
+        renderProgress(
+          Boolean(result.data.is_cardless),
+          "application"
+        );
 
         const formType = String(
           result.data.form_type || ""

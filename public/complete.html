@@ -1,4 +1,3 @@
-//complete.html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -161,26 +160,14 @@
   <nav class="topnav">
     <div class="logo">Verification <span>Process</span></div>
 
-    <div class="progress-wrap">
-      <div class="progress-step">
-        <div class="progress-num">✓</div>
-        <span>Application</span>
-      </div>
-
-      <div class="progress-line"></div>
-
-      <div class="progress-step">
-        <div class="progress-num">✓</div>
-        <span>Verify Identity</span>
-      </div>
-
-      <div class="progress-line"></div>
-
-      <div class="progress-step">
-        <div class="progress-num">✓</div>
-        <span>Completed</span>
-      </div>
-    </div>
+    <!--
+      Populated by JS on load. If a `token` is present in the URL,
+      the lead came here via the Agreement form's redirect
+      (Cardless flow), so we show the 4-step version with Agreement.
+      Otherwise the lead is Physical (no Agreement step) and we show
+      the original 3-step version.
+    -->
+    <div class="progress-wrap" id="progressWrap"></div>
   </nav>
 
   <main class="page">
@@ -202,7 +189,94 @@
   </main>
 
   <script>
-    sessionStorage.removeItem("plaid_token");
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      const token = (params.get("token") || "").trim();
+
+      // A token in the URL here means the Agreement form's own
+      // "Redirect URL after submit" sent the user here — i.e. this
+      // is a Cardless lead that went through the Agreement step.
+      // Physical leads arrive at plain "/complete" with no token.
+      const hasAgreement = token !== "";
+
+      renderProgress(hasAgreement);
+
+      if (hasAgreement) {
+        finalizeAgreementCompletion(token);
+      }
+
+      // Safe to clear regardless of which flow this was.
+      sessionStorage.removeItem("plaid_token");
+
+      function renderProgress(hasAgreementStep) {
+        const wrap = document.getElementById("progressWrap");
+
+        if (!wrap) {
+          return;
+        }
+
+        const steps = hasAgreementStep
+          ? ["Application", "Verify Identity", "Agreement", "Complete"]
+          : ["Application", "Verify Identity", "Completed"];
+
+        wrap.innerHTML = steps
+          .map(function (label, index) {
+            const step =
+              '<div class="progress-step">' +
+              '<div class="progress-num">\u2713</div>' +
+              "<span>" + label + "</span>" +
+              "</div>";
+
+            const isLast = index === steps.length - 1;
+            const line = isLast ? "" : '<div class="progress-line"></div>';
+
+            return step + line;
+          })
+          .join("");
+      }
+
+      // Finalizes the CRM record for Cardless leads (stage ->
+      // Completed, token -> Used). This is required because the
+      // Agreement stage on its own does not mark the lead Completed
+      // or the token Used — this call is what closes it out, per
+      // /api/idv/complete on the server.
+      async function finalizeAgreementCompletion(agreementToken) {
+        try {
+          const response = await fetch("/api/idv/complete", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token: agreementToken }),
+            cache: "no-store",
+          });
+
+          const data = await response.json().catch(function () {
+            return {};
+          });
+
+          if (!response.ok || !data.success) {
+            // Not shown to the user: by the time they're on this
+            // page they've already finished the Agreement form, so
+            // we don't want to surface an error card here. The most
+            // common non-fatal cause is the token already being
+            // marked Used (e.g. the user refreshed this page).
+            console.warn(
+              "Could not finalize Agreement completion:",
+              data.message || ("HTTP " + response.status)
+            );
+            return;
+          }
+
+          console.log("Agreement completion finalized in CRM.");
+        } catch (error) {
+          console.warn(
+            "Could not reach /api/idv/complete:",
+            error.message
+          );
+        }
+      }
+    })();
   </script>
 </body>
 </html>

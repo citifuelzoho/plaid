@@ -1727,6 +1727,18 @@ app.post(
         agreement_form_url:
           selectedAgreementForm?.formUrl ||
           null,
+
+        /*
+         * NEW: lets index.html / verify.html render the correct
+         * 3-step (Physical) or 4-step (Cardless) progress nav
+         * without needing their own copy of this business rule.
+         * agreement.html doesn't need this — it's only ever
+         * reached by Cardless leads in the first place.
+         */
+        is_cardless:
+          isCardlessFulfillmentType(
+            fulfillmentType
+          ),
       });
     } catch (error) {
       console.error(
