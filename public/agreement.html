@@ -578,14 +578,16 @@
 
     /*
      * Query params sent to BOTH Agreement forms (default + Veon):
-     *   - Plaid_Token   -> the verification token
-     *   - Email         -> CRM Lead's Email field
-     *   - Fuel_Card_Name -> CRM Lead's Fuel_Card_Name field
+     *   - Plaid_Token    -> the verification token
+     *   - Email          -> CRM Lead's Email field
+     *   - Card_LLC_Name  -> CRM Lead's Fuel_Card_Name field
      *
-     * These must match the "Field Link Name" of the corresponding
-     * hidden fields configured in each Zoho Form. If your forms
-     * use different link names (e.g. lowercase "email"), adjust
-     * the keys below to match.
+     * These must match the Zoho Forms "Field Alias" configured for
+     * each field under Prefill -> Field Alias - Prefill URL. The
+     * fuel-card field's alias on both Agreement forms is
+     * "Card_LLC_Name" (label shown in the builder is "Club
+     * Organizer"), NOT "Fuel_Card_Name" -- if you rename the alias
+     * in Zoho, update the key below to match.
      */
     function buildZohoFormUrl(token, fuelCardName, formUrl, email) {
       if (!formUrl || String(formUrl).trim() === "") {
@@ -606,7 +608,7 @@
 
       url.searchParams.set("Plaid_Token", token);
       url.searchParams.set("Email", email || "");
-      url.searchParams.set("Fuel_Card_Name", fuelCardName || "");
+      url.searchParams.set("Card_LLC_Name", fuelCardName || "");
       return url.toString();
     }
 
