@@ -254,20 +254,6 @@
       text-align: center;
     }
 
-    .loader-badge {
-      width: 64px;
-      height: 64px;
-      margin: 0 auto 18px;
-      border-radius: 18px;
-      display: grid;
-      place-items: center;
-      font-size: 20px;
-      font-weight: 800;
-      color: #fff;
-      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-      box-shadow: 0 14px 30px rgba(37, 99, 235, 0.3);
-    }
-
     .loader-ring {
       width: 56px;
       height: 56px;
@@ -381,12 +367,6 @@
   <nav class="topnav">
     <div class="logo">Verification <span>Process</span></div>
 
-    <!--
-      Initial markup assumes Cardless (4 steps) so there's no
-      blank flash before JS runs. Once /api/token/validate
-      returns is_cardless, renderProgress() rebuilds this to
-      3 steps for Physical leads.
-    -->
     <div class="progress-wrap" id="progressWrap">
       <div class="progress-step active">
         <div class="progress-num">1</div>
@@ -572,16 +552,6 @@
       }
     }
 
-    // ---------------------------------------------------------
-    // DYNAMIC PROGRESS NAV
-    // Cardless leads (Fulfillment_Type = Cardless) go through
-    // Application -> Verify Identity -> Agreement -> Complete.
-    // Physical leads skip Agreement entirely:
-    // Application -> Verify Identity -> Complete.
-    // `currentKey` identifies which step this page represents,
-    // so steps before it render as done (checkmark), the
-    // matching one as active, and the rest as pending numbers.
-    // ---------------------------------------------------------
     function renderProgress(hasAgreement, currentKey) {
       const wrap = document.getElementById("progressWrap");
 
@@ -632,7 +602,30 @@
         .join("");
     }
 
-    function buildZohoFormUrl(token, fuelCardName, formUrl) {
+    /*
+     * Query params sent to the Application form (default + Veon):
+     *   - Plaid_Token -> the verification token
+     *   - FUEL_CARD   -> CRM Lead's Fuel_Card_Name field (existing,
+     *                    already matches this form's hidden field
+     *                    alias in production)
+     *   - Email       -> CRM Lead's Email field
+     *   - First_Name  -> CRM Lead's First_Name field
+     *   - Last_Name   -> CRM Lead's Last_Name field
+     *   - Phone       -> CRM Lead's Phone field
+     *
+     * These must match the Zoho Forms "Field Alias" configured for
+     * each field under Prefill -> Field Alias - Prefill URL. If you
+     * rename an alias in Zoho, update the matching key below.
+     */
+    function buildZohoFormUrl(
+      token,
+      fuelCardName,
+      formUrl,
+      email,
+      firstName,
+      lastName,
+      phone
+    ) {
       if (!formUrl || String(formUrl).trim() === "") {
         throw new Error(
           "Zoho Form URL was not returned by the server."
@@ -651,6 +644,10 @@
 
       url.searchParams.set("Plaid_Token", token);
       url.searchParams.set("FUEL_CARD", fuelCardName || "");
+      url.searchParams.set("Email", email || "");
+      url.searchParams.set("First_Name", firstName || "");
+      url.searchParams.set("Last_Name", lastName || "");
+      url.searchParams.set("Phone", phone || "");
       return url.toString();
     }
 
@@ -694,10 +691,6 @@
         return "/verify";
       }
 
-      /*
-       * NEW: Agreement stage — every lead now passes through
-       * this step after Plaid, regardless of Fuel_Card_Name.
-       */
       if (normalizedStage === "agreement") {
         return "/agreement";
       }
@@ -736,12 +729,6 @@
         data.record?.Plaid_Stage ||
         "";
 
-      /*
-       * Zoho form          -> /
-       * Plaid verification -> /verify
-       * Agreement          -> /agreement
-       * Completed          -> /complete
-       */
       const targetRoute = getRouteFromPlaidStage(plaidStage);
 
       if (!targetRoute) {
@@ -775,7 +762,16 @@
       };
     }
 
-    function mountZohoForm(token, formType, formUrl, fuelCardName) {
+    function mountZohoForm(
+      token,
+      formType,
+      formUrl,
+      fuelCardName,
+      email,
+      firstName,
+      lastName,
+      phone
+    ) {
       const formContainer = document.getElementById(
         "zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ"
       );
@@ -831,7 +827,11 @@
       iframe.src = buildZohoFormUrl(
         token,
         fuelCardName,
-        formUrl
+        formUrl,
+        email,
+        firstName,
+        lastName,
+        phone
       );
       iframe.style.border = "none";
       iframe.style.width = "100%";
@@ -851,29 +851,6 @@
 
       formContainer.appendChild(iframe);
 
-      /*
-       * MUHIM: Zoho forma yuborilgandan keyingi
-       * navigatsiya (/verify sahifasiga o'tish)
-       * ENDI ZOHONING O'ZI tomonidan, Zoho Forms
-       * builder'dagi "Redirect URL after submit"
-       * sozlamasi orqali amalga oshiriladi:
-       *
-       *   https://SIZNING-DOMENINGIZ/verify?token=${Plaid_Token}
-       *
-       * (${Plaid_Token} — formadagi Plaid_Token
-       * yashirin maydonining merge-tegi, u URL
-       * parametridan to'ldiriladi, chunki
-       * buildZohoFormUrl() token'ni ?Plaid_Token=
-       * sifatida iframe manziliga qo'shadi.)
-       *
-       * Shu sababli bu yerdagi postMessage
-       * listener endi FAQAT iframe balandligini
-       * moslashtirish uchun ishlatiladi — forma
-       * yuborilganda o'zimiz qo'lda /verify'ga
-       * o'tkazish (redirect) qilmaymiz, aks holda
-       * Zoho redirekti bilan ziddiyat/qo'sh
-       * o'tish yuzaga kelishi mumkin.
-       */
       window.addEventListener(
         "message",
         function (event) {
@@ -933,8 +910,6 @@
           return;
         }
 
-        // Server now tells us Physical vs Cardless directly —
-        // rebuild the nav to 3 or 4 steps accordingly.
         renderProgress(
           Boolean(result.data.is_cardless),
           "application"
@@ -952,16 +927,33 @@
           result.data.fuel_card_name || ""
         ).trim();
 
+        const email = String(
+          result.data.email || ""
+        ).trim();
+
+        const firstName = String(
+          result.data.first_name || ""
+        ).trim();
+
+        const lastName = String(
+          result.data.last_name || ""
+        ).trim();
+
+        const phone = String(
+          result.data.phone || ""
+        ).trim();
+
         if (!formType || !formUrl) {
           throw new Error(
             "No Zoho Form is configured."
           );
         }
 
-        console.log(
-          "Fuel Card Name:",
-          fuelCardName
-        );
+        console.log("Fuel Card Name:", fuelCardName);
+        console.log("Email:", email);
+        console.log("First Name:", firstName);
+        console.log("Last Name:", lastName);
+        console.log("Phone:", phone);
         console.log("Selected form type:", formType);
 
         setLoaderMessage(
@@ -970,7 +962,16 @@
             : "Loading your fuel card application"
         );
 
-        mountZohoForm(token, formType, formUrl, fuelCardName);
+        mountZohoForm(
+          token,
+          formType,
+          formUrl,
+          fuelCardName,
+          email,
+          firstName,
+          lastName,
+          phone
+        );
         hideLoader();
       } catch (error) {
         console.error(

@@ -936,6 +936,7 @@ async function validateLeadToken(
       First_Name,
       Last_Name,
       Email,
+      Phone,
       ${zohoPlaidTokenField},
       ${zohoLeadStatusField},
       ${zohoTokenStatusField},
@@ -1245,6 +1246,10 @@ if (
     lead.Last_Name
   ).trim();
 
+  const phone = extractStringValue(
+    lead.Phone
+  ).trim();
+
   console.log(
     "VALIDATION RESULT: TOKEN IS ACTIVE"
   );
@@ -1275,6 +1280,11 @@ if (
   );
 
   console.log(
+    "Phone:",
+    phone || "(empty)"
+  );
+
+  console.log(
     "================================================\n"
   );
 
@@ -1287,6 +1297,7 @@ if (
     email,
     firstName,
     lastName,
+    phone,
   };
 }
 
@@ -1444,6 +1455,7 @@ app.post(
         email,
         firstName,
         lastName,
+        phone,
       } = validation;
 
       const currentPlaidStage =
@@ -1660,6 +1672,8 @@ app.post(
 
         last_name:
           lastName,
+
+        phone,
 
         form_type:
           selectedForm?.formType ||
