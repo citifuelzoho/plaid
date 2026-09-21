@@ -581,15 +581,21 @@
      *   - Plaid_Token    -> the verification token
      *   - Email          -> CRM Lead's Email field
      *   - Card_LLC_Name  -> CRM Lead's Fuel_Card_Name field
+     *   - First_Name     -> CRM Lead's First_Name field
+     *   - Last_Name      -> CRM Lead's Last_Name field
      *
      * These must match the Zoho Forms "Field Alias" configured for
-     * each field under Prefill -> Field Alias - Prefill URL. The
-     * fuel-card field's alias on both Agreement forms is
-     * "Card_LLC_Name" (label shown in the builder is "Club
-     * Organizer"), NOT "Fuel_Card_Name" -- if you rename the alias
-     * in Zoho, update the key below to match.
+     * each field under Prefill -> Field Alias - Prefill URL. If you
+     * rename an alias in Zoho, update the matching key below.
      */
-    function buildZohoFormUrl(token, fuelCardName, formUrl, email) {
+    function buildZohoFormUrl(
+      token,
+      fuelCardName,
+      formUrl,
+      email,
+      firstName,
+      lastName
+    ) {
       if (!formUrl || String(formUrl).trim() === "") {
         throw new Error(
           "Zoho Agreement Form URL was not returned by the server."
@@ -609,6 +615,8 @@
       url.searchParams.set("Plaid_Token", token);
       url.searchParams.set("Email", email || "");
       url.searchParams.set("Card_LLC_Name", fuelCardName || "");
+      url.searchParams.set("First_Name", firstName || "");
+      url.searchParams.set("Last_Name", lastName || "");
       return url.toString();
     }
 
@@ -764,7 +772,9 @@
       formType,
       formUrl,
       fuelCardName,
-      email
+      email,
+      firstName,
+      lastName
     ) {
       const formContainer = document.getElementById(
         "zf_div_agreement"
@@ -818,7 +828,9 @@
         token,
         fuelCardName,
         formUrl,
-        email
+        email,
+        firstName,
+        lastName
       );
       iframe.style.border = "none";
       iframe.style.width = "100%";
@@ -911,6 +923,14 @@
           result.data.email || ""
         ).trim();
 
+        const firstName = String(
+          result.data.first_name || ""
+        ).trim();
+
+        const lastName = String(
+          result.data.last_name || ""
+        ).trim();
+
         if (!formType || !formUrl) {
           throw new Error(
             "No Zoho Agreement Form is configured."
@@ -919,6 +939,8 @@
 
         console.log("Fuel Card Name:", fuelCardName);
         console.log("Email:", email);
+        console.log("First Name:", firstName);
+        console.log("Last Name:", lastName);
         console.log("Selected agreement form type:", formType);
 
         setLoaderMessage(
@@ -932,7 +954,9 @@
           formType,
           formUrl,
           fuelCardName,
-          email
+          email,
+          firstName,
+          lastName
         );
         hideLoader();
       } catch (error) {

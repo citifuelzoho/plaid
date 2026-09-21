@@ -1237,6 +1237,14 @@ if (
     lead.Email
   ).trim();
 
+  const firstName = extractStringValue(
+    lead.First_Name
+  ).trim();
+
+  const lastName = extractStringValue(
+    lead.Last_Name
+  ).trim();
+
   console.log(
     "VALIDATION RESULT: TOKEN IS ACTIVE"
   );
@@ -1257,6 +1265,16 @@ if (
   );
 
   console.log(
+    "First Name:",
+    firstName || "(empty)"
+  );
+
+  console.log(
+    "Last Name:",
+    lastName || "(empty)"
+  );
+
+  console.log(
     "================================================\n"
   );
 
@@ -1267,6 +1285,8 @@ if (
     fuelCardName,
     fulfillmentType,
     email,
+    firstName,
+    lastName,
   };
 }
 
@@ -1422,6 +1442,8 @@ app.post(
         fuelCardName,
         fulfillmentType,
         email,
+        firstName,
+        lastName,
       } = validation;
 
       const currentPlaidStage =
@@ -1632,6 +1654,12 @@ app.post(
           fuelCardName,
 
         email,
+
+        first_name:
+          firstName,
+
+        last_name:
+          lastName,
 
         form_type:
           selectedForm?.formType ||
