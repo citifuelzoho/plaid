@@ -576,7 +576,18 @@
       }
     }
 
-    function buildZohoFormUrl(token, fuelCardName, formUrl) {
+    /*
+     * Query params sent to BOTH Agreement forms (default + Veon):
+     *   - Plaid_Token   -> the verification token
+     *   - Email         -> CRM Lead's Email field
+     *   - Fuel_Card_Name -> CRM Lead's Fuel_Card_Name field
+     *
+     * These must match the "Field Link Name" of the corresponding
+     * hidden fields configured in each Zoho Form. If your forms
+     * use different link names (e.g. lowercase "email"), adjust
+     * the keys below to match.
+     */
+    function buildZohoFormUrl(token, fuelCardName, formUrl, email) {
       if (!formUrl || String(formUrl).trim() === "") {
         throw new Error(
           "Zoho Agreement Form URL was not returned by the server."
@@ -594,7 +605,8 @@
       }
 
       url.searchParams.set("Plaid_Token", token);
-      url.searchParams.set("FUEL_CARD", fuelCardName || "");
+      url.searchParams.set("Email", email || "");
+      url.searchParams.set("Fuel_Card_Name", fuelCardName || "");
       return url.toString();
     }
 
@@ -653,15 +665,6 @@
     }
 
     async function validateTokenAndRoute(token) {
-      /*
-       * Same eventual-consistency retry pattern as verify.html:
-       * /api/idv/success already advances Plaid_Stage to
-       * "Agreement" right after Plaid succeeds, but Zoho COQL
-       * may briefly still return "Plaid verification". The
-       * server's own validate handler also advances the stage
-       * as a safety net (context: "agreement"), so a couple of
-       * retries here is normally enough to settle.
-       */
       const maxAttempts = 4;
       const retryDelayMs = 1000;
 
@@ -758,7 +761,8 @@
       token,
       formType,
       formUrl,
-      fuelCardName
+      fuelCardName,
+      email
     ) {
       const formContainer = document.getElementById(
         "zf_div_agreement"
@@ -808,7 +812,12 @@
       );
 
       const iframe = document.createElement("iframe");
-      iframe.src = buildZohoFormUrl(token, fuelCardName, formUrl);
+      iframe.src = buildZohoFormUrl(
+        token,
+        fuelCardName,
+        formUrl,
+        email
+      );
       iframe.style.border = "none";
       iframe.style.width = "100%";
       iframe.style.height = "calc(100vh - 124px)";
@@ -827,27 +836,6 @@
 
       formContainer.appendChild(iframe);
 
-      /*
-       * MUHIM: Xuddi Application formadagi kabi, bu yerda ham
-       * yakuniy navigatsiya (/complete'ga o'tish) ZOHONING
-       * O'ZI tomonidan amalga oshiriladi — Zoho Forms
-       * builder'dagi Agreement forma uchun "Redirect URL after
-       * submit" sozlamasini quyidagicha o'rnating:
-       *
-       *   https://YOUR-DOMAIN/complete?token=${Plaid_Token}
-       *
-       * (${Plaid_Token} — shu formadagi Plaid_Token yashirin
-       * maydonining merge-tegi, u URL parametridan to'ldiriladi,
-       * chunki buildZohoFormUrl() token'ni ?Plaid_Token=
-       * sifatida iframe manziliga qo'shadi.) complete.html o'zi
-       * shu token borligini ko'rib, /api/idv/complete'ni
-       * chaqirib CRM'ni yakunlaydi — alohida oraliq sahifa
-       * kerak emas.
-       *
-       * Bu yerdagi postMessage listener FAQAT iframe
-       * balandligini moslashtirish uchun ishlatiladi — forma
-       * yuborilganda o'zimiz qo'lda redirect qilmaymiz.
-       */
       window.addEventListener(
         "message",
         function (event) {
@@ -917,6 +905,10 @@
           result.data.fuel_card_name || ""
         ).trim();
 
+        const email = String(
+          result.data.email || ""
+        ).trim();
+
         if (!formType || !formUrl) {
           throw new Error(
             "No Zoho Agreement Form is configured."
@@ -924,6 +916,7 @@
         }
 
         console.log("Fuel Card Name:", fuelCardName);
+        console.log("Email:", email);
         console.log("Selected agreement form type:", formType);
 
         setLoaderMessage(
@@ -936,7 +929,8 @@
           token,
           formType,
           formUrl,
-          fuelCardName
+          fuelCardName,
+          email
         );
         hideLoader();
       } catch (error) {

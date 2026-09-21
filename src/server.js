@@ -724,20 +724,6 @@ function formatZohoDateTime(
     date.getUTCSeconds()
   );
 
-  /*
-   * Zoho CRM API DateTime maydonlari
-   * "Z" (Zulu) formatini emas, balki
-   * aniq timezone offset (+00:00)
-   * formatini kutadi, va millisekund
-   * bo'lmasligi kerak. JS'ning
-   * date.toISOString() esa
-   * "2026-07-15T14:33:35.834Z" kabi
-   * qaytaradi — bu Zoho tomonidan
-   * ba'zan INVALID_DATA sifatida rad
-   * etiladi. Shu sabab qo'lda to'g'ri
-   * formatga o'giramiz:
-   * "2026-07-15T14:33:35+00:00"
-   */
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+00:00`;
 }
 
@@ -758,14 +744,6 @@ function getFormConfigForFuelCardName(fuelCardName) {
   };
 }
 
-/*
- * Whether Agreement applies at all is gated by Fulfillment_Type
- * (see isCardlessFulfillmentType below), NOT by Fuel_Card_Name.
- * This helper should only be called once we already know
- * Agreement applies (i.e. Fulfillment_Type is Cardless) — it
- * just picks which form VARIANT to show, same isVeon pattern
- * as the Application form.
- */
 function isCardlessFulfillmentType(fulfillmentType) {
   return normalizeText(fulfillmentType).includes(
     "cardless"
@@ -1255,6 +1233,10 @@ if (
     lead[zohoFulfillmentTypeField]
   ).trim();
 
+  const email = extractStringValue(
+    lead.Email
+  ).trim();
+
   console.log(
     "VALIDATION RESULT: TOKEN IS ACTIVE"
   );
@@ -1270,6 +1252,11 @@ if (
   );
 
   console.log(
+    "Email:",
+    email || "(empty)"
+  );
+
+  console.log(
     "================================================\n"
   );
 
@@ -1279,6 +1266,7 @@ if (
     lead,
     fuelCardName,
     fulfillmentType,
+    email,
   };
 }
 
@@ -1304,10 +1292,6 @@ app.get("/verify", (req, res) => {
   );
 });
 
-/*
- * Agreement step. Only reached by Cardless leads (Fulfillment_Type
- * gate — see /api/idv/success and /api/token/validate).
- */
 app.get("/agreement", (req, res) => {
   res.sendFile(
     path.join(
@@ -1317,21 +1301,6 @@ app.get("/agreement", (req, res) => {
   );
 });
 
-/*
- * Zoho's "Redirect URL after submit" setting (on both Agreement
- * forms, in Zoho Forms builder) should point directly here now:
- *
- *   https://YOUR-DOMAIN/complete?token=${Plaid_Token}
- *
- * complete.html itself finalizes the CRM update (stage ->
- * Completed, token -> Used) when it sees a token in the URL, then
- * shows the completed state. No separate hand-off page needed.
- *
- * This route only exists so that if the Zoho form's redirect
- * setting still points at the old /agreement-complete URL, it
- * keeps working — it just forwards straight to /complete with
- * the same query string.
- */
 app.get("/agreement-complete", (req, res) => {
   const queryString =
     new URLSearchParams(
@@ -1452,6 +1421,7 @@ app.post(
         lead,
         fuelCardName,
         fulfillmentType,
+        email,
       } = validation;
 
       const currentPlaidStage =
@@ -1487,23 +1457,6 @@ app.post(
 
       let stageWasAdvanced = false;
 
-      /*
-       * Zoho Form endi o'zining "Redirect URL"
-       * sozlamasi orqali foydalanuvchini
-       * to'g'ridan-to'g'ri /verify sahifasiga
-       * olib boradi (bizning JS orqali emas).
-       * Shu sabab, agar /verify sahifasi token'ni
-       * tekshirsa va CRM'da bosqich hali "Zoho form"
-       * bo'lib qolgan bo'lsa — demak foydalanuvchi
-       * hozirgina formani to'ldirib shu yerga
-       * kelgan. Bosqichni SHU SO'ROV ICHIDA
-       * "Plaid verification"ga o'zgartiramiz va
-       * yangilangan qiymatni darhol javobda
-       * qaytaramiz — bu alohida yozish/o'qish
-       * so'rovlari orasidagi kechikish (Zoho COQL
-       * eventual consistency) muammosini butunlay
-       * bartaraf etadi.
-       */
       if (
         requestContext === "verify" &&
         normalizedStage ===
@@ -1530,21 +1483,6 @@ app.post(
         stageWasAdvanced = true;
       }
 
-      /*
-       * Same eventual-consistency safety net as the "verify"
-       * block above, applied to the Agreement page.
-       * /api/idv/success already decides the correct next
-       * stage right after Plaid's onSuccess fires (Agreement
-       * for Cardless, Completed for everyone else), but if the
-       * Agreement page's own validate call lands before that
-       * write is visible in COQL, this catches it.
-       *
-       * IMPORTANT: Agreement is gated by Fulfillment_Type, NOT
-       * Fuel_Card_Name. If a Physical lead somehow lands on
-       * /agreement (stale link, bookmark, etc.), we do NOT show
-       * them an Agreement form — we finish the job here exactly
-       * like /api/idv/success would, so they end up at /complete.
-       */
       if (
         requestContext === "agreement" &&
         normalizedStage ===
@@ -1606,12 +1544,6 @@ app.post(
 
       let selectedForm = null;
 
-      /*
-       * Faqat Zoho Form bosqichida
-       * Fuel_Card_Name bo‘yicha form tanlanadi:
-       * - "Veon" contain bo‘lsa ZOHO_FORM_VEON_URL
-       * - aks holda ZOHO_FORM_URL
-       */
       if (
         normalizedStage ===
         normalizedZohoFormStage
@@ -1632,12 +1564,6 @@ app.post(
         );
       }
 
-      /*
-       * This stage is only ever reached by Cardless leads (see
-       * the Fulfillment_Type gate above / in /api/idv/success).
-       * The form VARIANT shown here still follows Fuel_Card_Name,
-       * same isVeon pattern as the Application form.
-       */
       let selectedAgreementForm = null;
 
       if (
@@ -1660,13 +1586,6 @@ app.post(
         );
       }
 
-      /*
-       * Plaid Stage bo‘sh bo‘lsa
-       * birinchi bosqichga o‘rnatamiz.
-       * (Agar yuqorida allaqachon
-       * boshqa bosqichga o'tkazilgan
-       * bo'lsa, bu yerga kirmaymiz.)
-       */
       if (
         !currentPlaidStage &&
         !stageWasAdvanced
@@ -1712,6 +1631,8 @@ app.post(
         fuel_card_name:
           fuelCardName,
 
+        email,
+
         form_type:
           selectedForm?.formType ||
           null,
@@ -1728,13 +1649,6 @@ app.post(
           selectedAgreementForm?.formUrl ||
           null,
 
-        /*
-         * NEW: lets index.html / verify.html render the correct
-         * 3-step (Physical) or 4-step (Cardless) progress nav
-         * without needing their own copy of this business rule.
-         * agreement.html doesn't need this — it's only ever
-         * reached by Cardless leads in the first place.
-         */
         is_cardless:
           isCardlessFulfillmentType(
             fulfillmentType
@@ -1779,11 +1693,6 @@ app.post(
 
 /* =========================================================
    SET PLAID VERIFICATION STAGE
-   (Endi standart oqimda ishlatilmaydi — Zoho o'z
-   "Redirect URL"i orqali to'g'ridan-to'g'ri /verify'ga
-   o'tkazadi, va /api/token/validate shu yerda bosqichni
-   o'zi ilgari suradi. Bu endpoint qo'lda/zaxira sifatida
-   qoldirilgan.)
 ========================================================= */
 
 app.post(
@@ -1950,25 +1859,11 @@ app.post(
           });
       }
 
-      /*
-       * validateLeadToken() quyidagilarni qaytaradi:
-       * {
-       *   valid: true,
-       *   crmToken,
-       *   lead,
-       *   fuelCardName
-       * }
-       */
       const {
         lead,
         crmToken,
       } = validation;
 
-      /*
-       * MUHIM:
-       * Plaid client_user_id sifatida Lead ID emas,
-       * CRM'dagi Plaid_Token yuboriladi.
-       */
       const plaidClientUserId =
         String(
           crmToken ||
@@ -1984,10 +1879,6 @@ app.post(
         });
       }
 
-      /*
-       * Xavfsizlik uchun request token va CRM token
-       * bir xil ekanini tekshiramiz.
-       */
       if (
         normalizeText(
           plaidClientUserId
@@ -2129,27 +2020,6 @@ app.post(
 
 /* =========================================================
    PLAID VERIFICATION SUCCEEDED
-   (This is what verify.html's onSuccess calls now.)
-
-   Agreement is a CARDLESS-ONLY step (gated by Fulfillment_Type,
-   NOT Fuel_Card_Name):
-     - Cardless leads -> advance to "Agreement" stage, do NOT
-                         mark the token Used yet. Completion
-                         happens once the Agreement form is
-                         actually submitted (/api/idv/complete).
-     - Physical leads -> finalize immediately: stage ->
-                         "Completed", token -> "Used". Same
-                         behavior as before Agreement existed.
-
-   Fuel_Card_Name / isVeon plays no part in this decision — it
-   only picks which form VARIANT (Veon vs default) is shown for
-   the Application form, and later for the Agreement form on
-   the /agreement page itself, once we already know Agreement
-   applies.
-
-   The response tells the client which route to go to next
-   (next_route: "/agreement" or "/complete") so verify.html
-   doesn't need its own copy of this business rule.
 ========================================================= */
 
 app.post(
@@ -2267,11 +2137,6 @@ app.post(
         });
       }
 
-      /*
-       * Physical: no Agreement step. Finalize completion right
-       * away, exactly like /api/idv/complete used to do
-       * directly from verify.html before Agreement existed.
-       */
       const usedTime =
         formatZohoDateTime();
 
@@ -2356,11 +2221,6 @@ app.post(
 
 /* =========================================================
    COMPLETE VERIFICATION
-   (Called by complete.html itself, when it loads with a token
-   in the URL — meaning the Agreement form was just submitted
-   and Zoho redirected here. Marks the Lead Completed and the
-   token Used. Not called at all for Physical leads, whose
-   completion already happened in /api/idv/success.)
 ========================================================= */
 
 app.post(
