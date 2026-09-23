@@ -194,6 +194,23 @@ const zohoFulfillmentTypeField = String(
     "Fulfillment_Type"
 ).trim();
 
+/*
+ * Checkbox field. If checked -> Agreement form receives
+ * role=Punjabi, otherwise role=Other.
+ */
+const zohoPunjabiLeadField = String(
+  process.env.ZOHO_PUNJABI_LEAD_FIELD ||
+    "Punjabi_Lead"
+).trim();
+
+/*
+ * Sent to the Agreement form as payment_type.
+ */
+const zohoPaymentTypeField = String(
+  process.env.ZOHO_PAYMENT_TYPE_FIELD ||
+    "Payment_Type"
+).trim();
+
 /* =========================================================
    ZOHO FORM URLS FROM .ENV
 ========================================================= */
@@ -432,6 +449,16 @@ console.log(
 console.log(
   "ZOHO_FULFILLMENT_TYPE_FIELD:",
   zohoFulfillmentTypeField
+);
+
+console.log(
+  "ZOHO_PUNJABI_LEAD_FIELD:",
+  zohoPunjabiLeadField
+);
+
+console.log(
+  "ZOHO_PAYMENT_TYPE_FIELD:",
+  zohoPaymentTypeField
 );
 
 console.log(
@@ -750,6 +777,37 @@ function isCardlessFulfillmentType(fulfillmentType) {
   );
 }
 
+/*
+ * Zoho checkbox fields come back from COQL as a boolean
+ * (true/false). The "true" string check is just a safety net.
+ */
+function isCheckboxChecked(value) {
+  if (value === true) {
+    return true;
+  }
+
+  return normalizeText(extractStringValue(value)) === "true";
+}
+
+function getRoleFromPunjabiLead(value) {
+  return isCheckboxChecked(value) ? "Punjabi" : "Other";
+}
+
+/*
+ * Handles both a single picklist (string) and a
+ * multi-select picklist (array).
+ */
+function extractPaymentType(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => extractStringValue(item).trim())
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  return extractStringValue(value).trim();
+}
+
 function getAgreementFormConfigForFuelCardName(fuelCardName) {
   const isVeon = isVeonFuelCardName(fuelCardName);
 
@@ -943,7 +1001,9 @@ async function validateLeadToken(
       ${zohoTokenUsedField},
       ${zohoPlaidStageField},
       ${zohoFuelCardNameField},
-      ${zohoFulfillmentTypeField}
+      ${zohoFulfillmentTypeField},
+      ${zohoPunjabiLeadField},
+      ${zohoPaymentTypeField}
     FROM ${zohoLeadsModule}
     WHERE ${zohoPlaidTokenField} = '${escapedToken}'
     LIMIT 2
@@ -1106,6 +1166,16 @@ async function validateLeadToken(
       JSON.stringify(lead[zohoFulfillmentTypeField])
   );
 
+  console.log(
+    "CRM Punjabi Lead:",
+    JSON.stringify(lead[zohoPunjabiLeadField])
+  );
+
+  console.log(
+    "CRM Payment Type:",
+    JSON.stringify(lead[zohoPaymentTypeField])
+  );
+
   const savedToken = String(
     lead[zohoPlaidTokenField] || ""
   )
@@ -1132,36 +1202,36 @@ async function validateLeadToken(
     ).trim();
 
   const normalizedAllowedStatuses =
-  zohoAllowedLeadStatus.map((status) =>
-    normalizeText(status)
-  );
+    zohoAllowedLeadStatus.map((status) =>
+      normalizeText(status)
+    );
 
-if (
-  !normalizedAllowedStatuses.includes(
-    normalizeText(currentLeadStatus)
-  )
-) {
-  console.log(
-    "VALIDATION RESULT: LEAD STATUS NOT ALLOWED"
-  );
+  if (
+    !normalizedAllowedStatuses.includes(
+      normalizeText(currentLeadStatus)
+    )
+  ) {
+    console.log(
+      "VALIDATION RESULT: LEAD STATUS NOT ALLOWED"
+    );
 
-  console.log(
-    "Current Lead Status:",
-    currentLeadStatus
-  );
+    console.log(
+      "Current Lead Status:",
+      currentLeadStatus
+    );
 
-  console.log(
-    "Required Lead Status:",
-    zohoAllowedLeadStatus.join(", ")
-  );
+    console.log(
+      "Required Lead Status:",
+      zohoAllowedLeadStatus.join(", ")
+    );
 
-  return {
-    valid: false,
-    statusCode: 403,
-    message:
-      "This verification link is no longer active",
-  };
-}
+    return {
+      valid: false,
+      statusCode: 403,
+      message:
+        "This verification link is no longer active",
+    };
+  }
 
   const tokenStatus = String(
     lead[zohoTokenStatusField] || ""
@@ -1250,6 +1320,14 @@ if (
     lead.Phone
   ).trim();
 
+  const role = getRoleFromPunjabiLead(
+    lead[zohoPunjabiLeadField]
+  );
+
+  const paymentType = extractPaymentType(
+    lead[zohoPaymentTypeField]
+  );
+
   console.log(
     "VALIDATION RESULT: TOKEN IS ACTIVE"
   );
@@ -1285,6 +1363,16 @@ if (
   );
 
   console.log(
+    "Role:",
+    role
+  );
+
+  console.log(
+    "Payment Type:",
+    paymentType || "(empty)"
+  );
+
+  console.log(
     "================================================\n"
   );
 
@@ -1298,6 +1386,8 @@ if (
     firstName,
     lastName,
     phone,
+    role,
+    paymentType,
   };
 }
 
@@ -1456,6 +1546,8 @@ app.post(
         firstName,
         lastName,
         phone,
+        role,
+        paymentType,
       } = validation;
 
       const currentPlaidStage =
@@ -1618,6 +1710,16 @@ app.post(
           "Selected Agreement Form Type:",
           selectedAgreementForm.formType
         );
+
+        console.log(
+          "Agreement Role:",
+          role
+        );
+
+        console.log(
+          "Agreement Payment Type:",
+          paymentType || "(empty)"
+        );
       }
 
       if (
@@ -1674,6 +1776,11 @@ app.post(
           lastName,
 
         phone,
+
+        role,
+
+        payment_type:
+          paymentType,
 
         form_type:
           selectedForm?.formType ||

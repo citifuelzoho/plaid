@@ -583,6 +583,9 @@
      *   - Card_LLC_Name  -> CRM Lead's Fuel_Card_Name field
      *   - First_Name     -> CRM Lead's First_Name field
      *   - Last_Name      -> CRM Lead's Last_Name field
+     *   - role           -> "Punjabi" if CRM Lead's Punjabi_Lead
+     *                       checkbox is checked, otherwise "Other"
+     *   - payment_type   -> CRM Lead's Payment_Type field
      *
      * These must match the Zoho Forms "Field Alias" configured for
      * each field under Prefill -> Field Alias - Prefill URL. If you
@@ -594,7 +597,9 @@
       formUrl,
       email,
       firstName,
-      lastName
+      lastName,
+      role,
+      paymentType
     ) {
       if (!formUrl || String(formUrl).trim() === "") {
         throw new Error(
@@ -617,6 +622,8 @@
       url.searchParams.set("Card_LLC_Name", fuelCardName || "");
       url.searchParams.set("First_Name", firstName || "");
       url.searchParams.set("Last_Name", lastName || "");
+      url.searchParams.set("role", role || "Other");
+      url.searchParams.set("payment_type", paymentType || "");
       return url.toString();
     }
 
@@ -774,7 +781,9 @@
       fuelCardName,
       email,
       firstName,
-      lastName
+      lastName,
+      role,
+      paymentType
     ) {
       const formContainer = document.getElementById(
         "zf_div_agreement"
@@ -830,7 +839,9 @@
         formUrl,
         email,
         firstName,
-        lastName
+        lastName,
+        role,
+        paymentType
       );
       iframe.style.border = "none";
       iframe.style.width = "100%";
@@ -931,6 +942,14 @@
           result.data.last_name || ""
         ).trim();
 
+        const role = String(
+          result.data.role || "Other"
+        ).trim();
+
+        const paymentType = String(
+          result.data.payment_type || ""
+        ).trim();
+
         if (!formType || !formUrl) {
           throw new Error(
             "No Zoho Agreement Form is configured."
@@ -941,6 +960,8 @@
         console.log("Email:", email);
         console.log("First Name:", firstName);
         console.log("Last Name:", lastName);
+        console.log("Role:", role);
+        console.log("Payment Type:", paymentType);
         console.log("Selected agreement form type:", formType);
 
         setLoaderMessage(
@@ -956,7 +977,9 @@
           fuelCardName,
           email,
           firstName,
-          lastName
+          lastName,
+          role,
+          paymentType
         );
         hideLoader();
       } catch (error) {
